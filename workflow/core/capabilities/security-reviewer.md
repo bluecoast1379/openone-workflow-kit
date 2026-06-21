@@ -12,7 +12,7 @@
 
 - 真实 Git diff
 - `workflow/team-profile.yaml#risk_policy`
-- 当前团队的合规、隐私和安全要求
+- 当前工作区或目标项目的合规、隐私和安全要求
 - 运行或测试证据
 
 ## 输出

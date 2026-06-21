@@ -1,7 +1,7 @@
 # Capability: release-safety-checker
 
 - **Tier**: essential
-- **Stage**: `/05`, `/07`, `/11`
+- **Stage**: `/05`, `/07`, `/08`, `/09`
 - **Purpose**: 对比发布候选分支与生产基线，确保发布范围与文档一致，防止无关提交进入生产。
 
 ## 为什么需要

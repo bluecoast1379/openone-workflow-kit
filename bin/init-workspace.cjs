@@ -723,7 +723,7 @@ ${makeCommandTable()}
 ## 单一事实源
 
 - 工作流规则：\`workflow/core/\`
-- 团队配置：\`workflow/team-profile.yaml\`
+- 工作区配置：\`workflow/team-profile.yaml\`
 - 可复用检查能力：\`workflow/core/capabilities/\`
 - 需求产物：工作区级 \`features/<feature>/\`
 - 工具 adapter：仅作为生成的薄入口
@@ -763,7 +763,7 @@ ${profile.enabledTools.map((tool) => `- ${tool}`).join('\n')}
 - \`workflow/README.md\`：工作流总览。
 - \`workflow/core/commands/\`：各阶段契约。
 - \`workflow/core/capabilities/README.md\`：可复用检查能力及工具适配方式。
-- \`workflow/team-profile.yaml\`：当前团队配置和缺失资料记录。
+- \`workflow/team-profile.yaml\`：当前工作区配置和资料扫描结果。
 
 ## 开始
 
@@ -832,7 +832,7 @@ new-feature -> 01-需求讨论 -> 02-产品文档 -> 02B-UI设计 -> 03-技术�
 ## 事实源
 
 - 工作流规则：\`workflow/core/\`
-- 团队配置：\`workflow/team-profile.yaml\`
+- 工作区配置：\`workflow/team-profile.yaml\`
 - 可复用检查能力：\`workflow/core/capabilities/\`
 - 完整使用说明：\`AGENTS.md\`
 
