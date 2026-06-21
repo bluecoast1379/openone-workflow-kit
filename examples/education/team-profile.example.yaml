@@ -1,0 +1,143 @@
+schema_version: "1.0"
+generated_at: "2026-06-05T00:00:00.000Z"
+generated_by: "agent-workflow-init (education example)"
+
+# Example profile for a learning platform team that runs a learner-facing
+# web app, an instructor console, and backend services. Replace placeholders
+# before use; do not commit real learner, instructor, school, or billing data.
+
+team:
+  name: "Example Learning Platform"
+  business_definition: "Learning platform for course delivery, assessments, and instructor operations."
+  target_users:
+    - "learner"
+    - "instructor"
+    - "school admin"
+    - "support operator"
+
+industries:
+  - education
+
+enabled_tools:
+  - codex
+  - claude
+  - cursor
+
+detected_tools: []
+
+source_materials:
+  business_intro:
+    label: "业务介绍"
+    status: "provided_by_user"
+    paths:
+      - "docs/product/overview.md"
+  project_docs:
+    label: "项目资料"
+    status: "provided_by_user"
+    paths:
+      - "docs/product/"
+      - "docs/learning-content/"
+  ui_specs:
+    label: "UI 设计文件"
+    status: "provided_by_user"
+    paths:
+      - "docs/design/learner-tokens.md"
+      - "docs/design/instructor-tokens.md"
+  frontend_rules:
+    label: "前端开发规范"
+    status: "provided_by_user"
+    paths:
+      - "docs/frontend-rules.md"
+  backend_rules:
+    label: "后端开发规范"
+    status: "provided_by_user"
+    paths:
+      - "docs/backend-rules.md"
+  testing_rules:
+    label: "测试规范"
+    status: "provided_by_user"
+    paths:
+      - "docs/testing-rules.md"
+
+repos:
+  - path: "apps/learner-web"
+    marker: "node"
+    tech_stack:
+      - "node"
+      - "react"
+      - "typescript"
+    family: "frontend-web"
+    role: "learner-facing web app"
+  - path: "apps/instructor-console"
+    marker: "node"
+    tech_stack:
+      - "node"
+      - "vue"
+      - "typescript"
+    family: "frontend-web"
+    role: "instructor operations console"
+  - path: "services/course"
+    marker: "node"
+    tech_stack:
+      - "node"
+      - "typescript"
+    family: "backend-service"
+    role: "course catalog and enrollment"
+  - path: "services/assessment"
+    marker: "node"
+    tech_stack:
+      - "node"
+      - "typescript"
+    family: "backend-service"
+    role: "quiz and assessment workflow"
+  - path: "services/notification"
+    marker: "node"
+    tech_stack:
+      - "node"
+      - "typescript"
+    family: "backend-service"
+    role: "email and in-app notifications"
+
+branch_model:
+  type: "trunk-based"
+  production_branch: "main"
+  integration_branch: "main"
+  feature_branch_rule: "feature/{ticket}-{slug}"
+  worktree_dir: "_worktrees"
+
+risk_policy:
+  remote_git_operations: "manual-only"
+  branch_creation: "manual-only"
+  push_and_release: "manual-only"
+  database_writes: "manual-only"
+  config_writes: "manual-only"
+  high_risk_files:
+    - "ci/**"
+    - "deploy/**"
+    - "*.env*"
+    - "infra/**"
+    - "package.json"
+    - "lockfiles"
+    - "content-import/**"
+    - "privacy/**"
+
+workflow:
+  features_dir: "features"
+  core_dir: "workflow/core"
+  adapters_dir: "workflow/adapters"
+  require_stage_gate_for_code: true
+  require_feature_branch_for_code: true
+  same_repo_parallel_policy: "worktree-required-after-implementation-stage"
+
+# Learning platforms should prioritize contract tracing for course and
+# assessment flows, privacy review for learner data, and evidence-based
+# verification of learner and instructor journeys.
+enabled_capabilities:
+  - branch-gatekeeper
+  - release-safety-checker
+  - prd-code-diff-checker
+  - contract-tracer
+  - ui-baseline-reviewer
+  - security-reviewer
+  - test-evidence-reviewer
+  - verify-app
