@@ -45,6 +45,15 @@ Capabilities 是可复用检查能力。不同工具可以把它们实现成 pro
 | optional | [memory-curator](./memory-curator.md) | 把复盘中的可复用经验脱敏沉淀为结构化记忆 | `/10` |
 | optional | [rule-extractor](./rule-extractor.md) | 从复盘中提炼可进入 workflow core 的通用规则候选 | `/10` |
 
+## 商业化跑道能力
+
+商业化跑道（`/new-product`、`/B1` 到 `/B9`）复用上面的能力分级口径。首批接入下面两个能力，保护“市场结论不编造、渠道投放不失控”这两条商业化最容易翻车的边界。
+
+| 分层 | Capability | 用途 | 阶段 |
+| --- | --- | --- | --- |
+| essential | [market-evidence-grader](./market-evidence-grader.md) | 给市场、竞品和客户结论做一手/二手/推断证据分级，禁止编造数据 | `/B1`-`/B5`, `/B9` |
+| essential | [channel-experiment-tracker](./channel-experiment-tracker.md) | 把每个渠道当实验管理：假设、双预算上限、周期和事前判定标准 | `/B5`-`/B9` |
+
 ## 接入建议
 
-先接入四个 essential 能力，保护“分支 / 阶段 / 发布范围 / PRD-diff / 契约追踪”这些最容易造成严重返工的边界。稳定后再接入 recommended 能力，补齐部署有效性、运行态证据、数据变更和多步协议风险。optional 能力适合多项目进入规模化使用后逐步增强。
+先接入四个 essential 能力，保护“分支 / 阶段 / 发布范围 / PRD-diff / 契约追踪”这些最容易造成严重返工的边界。稳定后再接入 recommended 能力，补齐部署有效性、运行态证据、数据变更和多步协议风险。optional 能力适合多项目进入规模化使用后逐步增强。启用商业化跑道时，market-evidence-grader 和 channel-experiment-tracker 与 B 阶段同批接入。

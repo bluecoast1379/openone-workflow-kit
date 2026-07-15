@@ -62,7 +62,11 @@ for (const rel of [
   '.codex/prompts/04-代码实现.md',
   '.codex/prompts/05-代码审查.md',
   '.codex/prompts/10-复盘总结.md',
+  '.codex/prompts/new-product.md',
+  '.codex/prompts/B1-业务定位.md',
   '.claude/commands/04-代码实现.md',
+  '.claude/commands/B1-业务定位.md',
+  '.claude/commands/B9-策略复盘.md',
   '.cursor/rules/agent-workflow-core.mdc',
   '.github/copilot-instructions.md',
   '.codebuddy/instructions.md',
@@ -72,6 +76,15 @@ for (const rel of [
   'workflow/INITIALIZATION_QUESTIONS.md',
   'workflow/core/commands/init-workspace.md',
   'workflow/core/commands/04-代码实现.md',
+  'workflow/core/commands/new-product.md',
+  'workflow/core/commands/B1-业务定位.md',
+  'workflow/core/commands/B1-B8-商业化准备.md',
+  'workflow/core/commands/B5-渠道漏斗映射.md',
+  'workflow/core/commands/B9-策略复盘.md',
+  'workflow/core/templates/00-business-status.md',
+  'workflow/core/templates/business-stage-document.md',
+  'workflow/core/capabilities/market-evidence-grader.md',
+  'workflow/core/capabilities/channel-experiment-tracker.md',
   'workflow/core/capabilities/branch-gatekeeper.md',
   'workflow/core/capabilities/release-safety-checker.md',
   'workflow/core/capabilities/prd-code-diff-checker.md',
@@ -101,6 +114,15 @@ assertContains('AGENTS.md', '/04-代码实现');
 assertContains('AGENTS.md', '/08-发布准备');
 assertContains('AGENTS.md', '/09-发布执行');
 assertContains('AGENTS.md', '/10-复盘总结');
+// The business track must be wired into the guide, profile, and adapters.
+assertContains('AGENTS.md', '/new-product');
+assertContains('AGENTS.md', '/B1-业务定位');
+assertContains('AGENTS.md', '/B9-策略复盘');
+assertContains('workflow/team-profile.yaml', 'business_dir');
+assertContains('workflow/team-profile.yaml', 'outbound_marketing_actions');
+assertContains('workflow/team-profile.yaml', 'market_research');
+assertContains('.cursor/commands/B1-业务定位.md', 'workflow/core/commands/B1-业务定位.md');
+assertContains('.cursor/rules/agent-workflow-core.mdc', 'B9-策略复盘');
 
 // The Cursor rule must explain how to run a stage via Cursor custom commands.
 assertContains('.cursor/rules/agent-workflow-core.mdc', '.cursor/commands/');

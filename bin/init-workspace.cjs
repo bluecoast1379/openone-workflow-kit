@@ -31,7 +31,18 @@ const STAGES = [
   ['08-发布准备', '发布准备', '完成个人项目的本地集成、版本号、tag、发布清单、回滚点和渠道材料。'],
   ['09-发布执行', '发布执行', '在用户明确授权后执行远程 push、release、商店/平台发布或部署，并记录证据。'],
   ['10-复盘总结', '复盘总结', '沉淀项目结论、可复用规则、知识库更新和下一轮改进项。'],
-  ['workflow-status', '工作流状态', '汇总 features 下所有需求的阶段状态、阻塞和下一步。']
+  ['new-product', '初始化商业化工作流', '创建 business/{product}/ 容器、商业化状态文件和素材目录。'],
+  ['B1-业务定位', '业务定位', '基于产品服务盘点、市场调研和竞争对手分析形成定位陈述与细分选择。'],
+  ['B1-B8-商业化准备', '商业化准备编排', '在容器初始化后串联生成 B1 到 B8 的商业化文档；不授权对外投放。'],
+  ['B2-商业模式', '商业模式', '梳理价值主张、收入与定价假设、成本结构、单位经济和关键假设。'],
+  ['B3-PMF与客户画像', 'PMF 与客户画像', '验证产品市场匹配度，确定理想客户画像 ICP 和负面画像。'],
+  ['B4-场景与购买旅程', '场景与购买旅程', '深挖客户使用场景（JTBD）和付费购买旅程、异议与流失点。'],
+  ['B5-渠道漏斗映射', '渠道漏斗映射', '明确线上线下各渠道在转化漏斗中的位置、作用、成本和 ICP 匹配度。'],
+  ['B6-营销获客策略', '营销获客策略', '制定总体营销/获客策略：阶段目标、主攻渠道、信息一致性和内容支柱。'],
+  ['B7-营销预算', '营销预算', '确定金钱与时间双预算、渠道分配、CAC 目标和止损线。'],
+  ['B8-渠道执行策略', '渠道执行策略', '制定 SEO 及其他已选渠道的执行 playbook，并把营销工程需求回流研发轨。'],
+  ['B9-策略复盘', '策略复盘', '按周期复盘漏斗数据、渠道 ROI 和假设判定，输出渠道加码/保持/降配/砍掉决策。'],
+  ['workflow-status', '工作流状态', '汇总 features 与 business 下所有需求和产品的阶段状态、阻塞和下一步。']
 ];
 
 const REQUIRED_SOURCES = [
@@ -70,6 +81,12 @@ const REQUIRED_SOURCES = [
     label: '测试规范',
     question: '请提供测试规范、测试用例或 QA 资料路径',
     match: /(test|testing|qa|测试|用例|验收)/i
+  },
+  {
+    key: 'market_research',
+    label: '市场与竞品资料',
+    question: '请提供市场调研、竞品分析、用户访谈或渠道数据资料路径（商业化轨 B1-B9 使用；暂缺可跳过）',
+    match: /(市场|竞品|调研|访谈|获客|营销|渠道|定价|market|competitor|research|gtm|marketing|pricing|persona|icp)/i
   }
 ];
 
@@ -108,7 +125,9 @@ const CAPABILITY_FILES = [
   'test-evidence-reviewer.md',
   'ui-baseline-reviewer.md',
   'memory-curator.md',
-  'rule-extractor.md'
+  'rule-extractor.md',
+  'market-evidence-grader.md',
+  'channel-experiment-tracker.md'
 ];
 
 main().catch((error) => {
@@ -379,6 +398,8 @@ function buildInstallPlan(target, profile, options) {
   add('workflow/core/templates/README.md', readKitFile('workflow/core/templates/README.md'));
   add('workflow/core/templates/00-workflow-status.md', readKitFile('workflow/core/templates/00-workflow-status.md'));
   add('workflow/core/templates/stage-document.md', readKitFile('workflow/core/templates/stage-document.md'));
+  add('workflow/core/templates/00-business-status.md', readKitFile('workflow/core/templates/00-business-status.md'));
+  add('workflow/core/templates/business-stage-document.md', readKitFile('workflow/core/templates/business-stage-document.md'));
   add('workflow/core/templates/team-profile.template.yaml', readKitFile('workflow/core/templates/team-profile.template.yaml'));
   add('workflow/core/capabilities/README.md', readKitFile('workflow/core/capabilities/README.md'));
   for (const name of CAPABILITY_FILES) {
@@ -516,6 +537,8 @@ function makeTeamProfileYaml(profile) {
   lines.push('  commit_tag_local_merge: "agent-allowed-after-verification"');
   lines.push('  remote_git_operations: "explicit-user-authorization-required"');
   lines.push('  push_and_release: "explicit-user-authorization-required"');
+  lines.push('  outbound_marketing_actions: "explicit-user-authorization-required"');
+  lines.push('  paid_ad_spend: "manual-only"');
   lines.push('  database_writes: "manual-only"');
   lines.push('  config_writes: "manual-only"');
   lines.push('  high_risk_files:');
@@ -533,11 +556,13 @@ function makeTeamProfileYaml(profile) {
   lines.push('');
   lines.push('workflow:');
   lines.push('  features_dir: "features"');
+  lines.push('  business_dir: "business"');
   lines.push('  core_dir: "workflow/core"');
   lines.push('  adapters_dir: "workflow/adapters"');
   lines.push('  require_stage_gate_for_code: true');
   lines.push('  require_feature_branch_for_code: true');
   lines.push('  same_repo_parallel_policy: "worktree-required-after-implementation-stage"');
+  lines.push('  business_review_cadence: "weekly-metrics, monthly-strategy, quarterly-positioning"');
   lines.push('');
   return lines.join('\n');
 }
@@ -558,7 +583,9 @@ function makeWorkflowReadme() {
 
 默认使用简体中文展示工作流沟通、阶段产物、状态摘要、审查结论、测试记录、发布记录和复盘；专有名词、产品名、代码标识符、命令、文件路径、分支名、API、SDK、框架、协议、标准、错误信息和官方英文术语保留原文。
 
-工作流阶段产物放在工作区级 \`features/<feature>/\` 下，不写入目标代码仓库。目标代码仓库只保留源码、代码相关配置、运行或构建必需资产，以及最小必要的代码侧 \`README\` 内容。
+工作流分两条轨道：研发轨阶段产物放在工作区级 \`features/<feature>/\` 下，商业化轨（业务定位、商业模式、PMF、渠道与营销策略）阶段产物放在工作区级 \`business/<product>/\` 下，都不写入目标代码仓库。目标代码仓库只保留源码、代码相关配置、运行或构建必需资产，以及最小必要的代码侧 \`README\` 内容。
+
+商业化轨只产出文档和清单：对外发布内容、投放广告、cold outreach、联系合作方需要用户明确授权或自行执行；营销工程需求（landing page、SEO 页面、埋点）通过 \`/new-feature\` 回流研发轨。
 
 \`/02B-UI设计\` 是前端实现的设计闸门；个人小改动可以记录范围有限的设计豁免，但必须说明影响面和补齐计划。
 
@@ -602,6 +629,9 @@ function makeCoreCommand(id, title, description) {
   const codeStage = id === '04-代码实现' || id === '04A-前端代码实现' || id === '04B-后端代码实现';
   const reviewStage = id === '05-代码审查';
   const prepStage = id === '03-06-研发准备';
+  const businessStage = id === 'new-product' || /^B\d/.test(id);
+  const containerDir = businessStage ? 'business/{product}' : 'features/{feature}';
+  const statusFile = businessStage ? '00-商业化状态.md' : '00-工作流状态.md';
   return `# /${id}
 
 ## 目标
@@ -612,7 +642,7 @@ ${title}: ${description}
 
 - \`AGENTS.md\`
 - \`workflow/team-profile.yaml\`
-- \`features/{feature}/\` 下的前序阶段文档
+- \`${containerDir}/\` 下的前序阶段文档
 - team-profile 中登记的本地代码、本地文档和用户提供资料
 
 ## 执行规则
@@ -623,12 +653,13 @@ ${title}: ${description}
 - 个人项目允许 agent 在范围明确且工作树已检查后执行本地分支命名、创建、commit、tag 和本地 merge；远程 push、release、部署、数据库写入和生产配置写入需要用户明确授权。
 ${codeStage ? '- 只有功能分支闸门、实现阶段闸门和同仓并行闸门全部通过后，才允许修改业务代码。' : '- 本阶段不授权修改业务代码；除非当前命令是实现命令且所有闸门已通过。'}
 ${prepStage ? '- 本编排命令只准备 03 到 06 文档，不授权代码实现。' : ''}
+${businessStage ? '- 商业化结论必须做证据分级（一手/二手/推断）并注明来源和日期，不得编造市场数据；对外发布、投放和 outreach 需要用户明确授权；营销工程需求通过 /new-feature 回流研发轨。' : ''}
 ${reviewStage ? '- 审查输出以问题优先，按严重级别排序，并引用文件、diff、测试或运行证据。' : ''}
 
 ## 必要输出
 
-- 更新或创建 \`features/{feature}/\` 下对应阶段文件。
-- 阶段状态变化时更新 \`features/{feature}/00-工作流状态.md\`。
+- 更新或创建 \`${containerDir}/\` 下对应阶段文件。
+- 阶段状态变化时更新 \`${containerDir}/${statusFile}\`。
 - 明确记录未解决问题和证据缺口。
 `;
 }
@@ -696,15 +727,16 @@ function makeToolUsage(profile) {
 function makeAgentsEntry(profile) {
   return `# Agent Workflow
 
-本工作区使用 ${GENERATED_BY} 生成的工具无关个人开发者 agent 工作流。它按阶段推进：需求澄清、产品文档、UI 设计、技术架构、闸门后的实现、审查、测试、个人发布和复盘。不同 AI 工具共享同一套 workflow core，每个工具只生成薄 adapter；体验会随工具能力增强或降级，但流程口径一致。
+本工作区使用 ${GENERATED_BY} 生成的工具无关个人开发者 agent 工作流。它包含两条共享同一套闸门口径的轨道：研发轨把一个需求从澄清推进到发布和复盘；商业化轨把一个产品从业务定位、商业模式、PMF 验证推进到渠道策略、预算和策略复盘。不同 AI 工具共享同一套 workflow core，每个工具只生成薄 adapter；体验会随工具能力增强或降级，但流程口径一致。
 
 ## 快速开始
 
 1. 先读取 \`workflow/team-profile.yaml\`，加载当前个人项目或个人工作区的仓库、分支模型和资料来源。
-2. 用 \`/new-feature <name>\` 初始化需求，它会创建 \`features/<name>/\` 和状态文件。
-3. 按顺序推进阶段：\`/01-需求讨论\` -> \`/02-产品文档\` -> \`/02B-UI设计\` -> \`/03-技术架构\` -> \`/04-代码实现\` -> \`/05-代码审查\` -> \`/06-测试用例\` -> \`/07-测试执行\` -> \`/08-发布准备\` -> \`/09-发布执行\` -> \`/10-复盘总结\`。
-4. 每个阶段都必须读取 \`features/<name>/\` 下的前序文档，并把本阶段产物写回同目录。
-5. 随时可执行 \`/workflow-status\` 汇总全部需求的阶段、阻塞和下一步。
+2. 研发轨：用 \`/new-feature <name>\` 初始化需求，它会创建 \`features/<name>/\` 和状态文件；按顺序推进 \`/01-需求讨论\` -> \`/02-产品文档\` -> \`/02B-UI设计\` -> \`/03-技术架构\` -> \`/04-代码实现\` -> \`/05-代码审查\` -> \`/06-测试用例\` -> \`/07-测试执行\` -> \`/08-发布准备\` -> \`/09-发布执行\` -> \`/10-复盘总结\`。
+3. 商业化轨：用 \`/new-product <name>\` 初始化产品商业化容器 \`business/<name>/\`；首次可用 \`/B1-B8-商业化准备\` 一次性串联生成 \`/B1-业务定位\` -> \`/B2-商业模式\` -> \`/B3-PMF与客户画像\` -> \`/B4-场景与购买旅程\` -> \`/B5-渠道漏斗映射\` -> \`/B6-营销获客策略\` -> \`/B7-营销预算\` -> \`/B8-渠道执行策略\`；上线后按周期执行 \`/B9-策略复盘\`。
+4. 两轨衔接：\`/01\`、\`/02\` 读取商业化基线（定位、ICP、场景、商业模式）；\`/08\`、\`/09\` 对照 B5/B8 准备发布营销材料和分发清单；\`/10\` 的增长信号回流 \`/B9\`；B8 的营销工程需求（landing、SEO 页面、埋点）通过 \`/new-feature\` 进入研发轨。
+5. 每个阶段都必须读取所在容器（\`features/<name>/\` 或 \`business/<name>/\`）下的前序文档，并把本阶段产物写回同目录。
+6. 随时可执行 \`/workflow-status\` 汇总两轨全部需求和产品的阶段、阻塞和下一步。
 
 不同工具触发阶段的方式不同，见下方“工具使用方式”。
 
@@ -726,6 +758,7 @@ ${makeCommandTable()}
 - 工作区配置：\`workflow/team-profile.yaml\`
 - 可复用检查能力：\`workflow/core/capabilities/\`
 - 需求产物：工作区级 \`features/<feature>/\`
+- 商业化产物：工作区级 \`business/<product>/\`
 - 工具 adapter：仅作为生成的薄入口
 
 ## 硬闸门
@@ -737,6 +770,9 @@ ${makeCommandTable()}
 - 个人项目允许 agent 在目标仓库工作树干净、范围明确、测试计划明确时执行本地分支命名、创建、commit、tag 和本地 merge。
 - 远程 push、GitHub release、商店发布、部署、数据库写入、生产配置写入和公开发布动作必须有用户明确授权。
 - 同仓多需求进入实现阶段后，必须使用独立 worktree。
+- 商业化轨（\`/new-product\`、\`/B1\` 到 \`/B9\`）只产出文档和清单：对外发布内容、投放广告、发送 cold email、联系 influencer 或合作伙伴必须有用户明确授权或由用户自行执行；付费投放支出由用户手动执行。
+- 商业化结论必须做证据分级（一手/二手/推断）并注明来源和日期，不得编造市场数据、用户评价或竞品价格。
+- 营销工程需求（landing page、SEO 页面、埋点、A/B 测试）必须通过 \`/new-feature\` 进入研发轨并遵守其全部闸门，不在 B 阶段直接修改代码。
 
 ## 工具能力策略
 
@@ -820,10 +856,15 @@ agent 随后读取阶段契约、\`workflow/team-profile.yaml\` 和前序
 
 ## 阶段顺序
 
+研发轨：
 new-feature -> 01-需求讨论 -> 02-产品文档 -> 02B-UI设计 -> 03-技术架构 -> 04-代码实现 -> 05-代码审查 ->
 06-测试用例 -> 07-测试执行 -> 08-发布准备 -> 09-发布执行 -> 10-复盘总结
 
-查看全部需求状态时，执行 \`workflow/core/commands/workflow-status.md\`。
+商业化轨：
+new-product -> B1-业务定位 -> B2-商业模式 -> B3-PMF与客户画像 -> B4-场景与购买旅程 ->
+B5-渠道漏斗映射 -> B6-营销获客策略 -> B7-营销预算 -> B8-渠道执行策略 -> B9-策略复盘（周期执行）
+
+查看全部需求和产品状态时，执行 \`workflow/core/commands/workflow-status.md\`。
 
 ## 任务描述
 
@@ -842,6 +883,7 @@ new-feature -> 01-需求讨论 -> 02-产品文档 -> 02B-UI设计 -> 03-技术�
 - 有 UI 或前端工作的需求必须先完成 \`/02B-UI设计\`，\`/04A-前端代码实现\` 必须遵循对应设计基线。
 - 本地分支命名、创建、commit、tag 和本地 merge 可由 agent 在个人项目中执行；远程 push、release、部署、数据库写入和生产配置写入需要用户明确授权。
 - 同仓并行实现进入实现阶段后必须使用独立 worktree。
+- 商业化轨（B1-B9）只产出文档；对外发布、投放和 outreach 需用户明确授权，营销工程需求通过 \`/new-feature\` 回流研发轨。
 `;
 }
 

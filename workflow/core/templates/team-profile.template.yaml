@@ -42,6 +42,10 @@ source_materials:
     label: "测试规范"
     status: "missing"
     paths: []
+  market_research:
+    label: "市场与竞品资料"
+    status: "missing"
+    paths: []
 
 repos: []
 
@@ -62,6 +66,8 @@ risk_policy:
   commit_tag_local_merge: "agent-allowed-after-verification"
   remote_git_operations: "explicit-user-authorization-required"
   push_and_release: "explicit-user-authorization-required"
+  outbound_marketing_actions: "explicit-user-authorization-required"
+  paid_ad_spend: "manual-only"
   ci_workflow_changes: "manual-review-required"
   cd_workflow_changes: "manual-review-required"
   auto_deploy_before_first_prod_release: "blocked"
@@ -83,8 +89,10 @@ risk_policy:
 
 workflow:
   features_dir: "features"
+  business_dir: "business"
   core_dir: "workflow/core"
   adapters_dir: "workflow/adapters"
   require_stage_gate_for_code: true
   require_feature_branch_for_code: true
   same_repo_parallel_policy: "worktree-required-after-implementation-stage"
+  business_review_cadence: "weekly-metrics, monthly-strategy, quarterly-positioning"
