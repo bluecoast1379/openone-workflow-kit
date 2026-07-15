@@ -24,7 +24,7 @@
 
 ## Required Outputs
 
-- 输出研发轨汇总：每个 feature 的当前阶段、状态、阻塞和下一步。
+- 输出研发轨汇总：每个 feature 的当前阶段、状态、复杂度档位、完成合同状态（草稿/已冻结）、blocking Oracle 进度（x/y PASS）、待澄清项数、阻塞和下一步。
 - 工作区存在 `business/` 时输出商业化轨汇总：每个产品的当前阶段、PMF 判定、待授权对外动作数量和下轮 B9 复盘时间。
 - 标出两轨间待办衔接：待回流研发轨的营销工程需求、待进入 B9 的增长信号。
 - Record unresolved questions and evidence gaps explicitly.

@@ -76,6 +76,20 @@ for (const rel of [
   'workflow/INITIALIZATION_QUESTIONS.md',
   'workflow/core/commands/init-workspace.md',
   'workflow/core/commands/04-代码实现.md',
+  'workflow/core/commands/定义完成.md',
+  'workflow/core/commands/交付至完成.md',
+  'workflow/core/commands/澄清.md',
+  'workflow/core/commands/一致性检查.md',
+  'workflow/core/templates/completion-contract.md',
+  'workflow/core/templates/constitution.template.md',
+  'workflow/core/templates/living-spec.md',
+  'workflow/core/capabilities/definition-lint.md',
+  'workflow/core/capabilities/acceptance-oracle-tracker.md',
+  'workflow/constitution.md',
+  'workflow/standards/README.md',
+  'specs/README.md',
+  '.claude/commands/定义完成.md',
+  '.claude/commands/交付至完成.md',
   'workflow/core/commands/new-product.md',
   'workflow/core/commands/B1-业务定位.md',
   'workflow/core/commands/B1-B8-商业化准备.md',
@@ -123,6 +137,68 @@ assertContains('workflow/team-profile.yaml', 'outbound_marketing_actions');
 assertContains('workflow/team-profile.yaml', 'market_research');
 assertContains('.cursor/commands/B1-业务定位.md', 'workflow/core/commands/B1-业务定位.md');
 assertContains('.cursor/rules/agent-workflow-core.mdc', 'B9-策略复盘');
+// Definition-of-done mechanics must be wired through guide, profile, and adapters.
+assertContains('AGENTS.md', '/定义完成');
+assertContains('AGENTS.md', '/交付至完成');
+assertContains('AGENTS.md', '完成合同');
+assertContains('workflow/team-profile.yaml', 'specs_dir');
+assertContains('workflow/team-profile.yaml', 'done_verdict');
+assertContains('.cursor/rules/agent-workflow-core.mdc', '定义完成');
+assertContains('.cursor/commands/定义完成.md', 'workflow/core/commands/定义完成.md');
+
+// Contract checker: a well-formed frozen contract passes, a broken one fails.
+const checker = path.join(root, 'bin', 'check-contract.cjs');
+const goodContract = `# 完成合同：demo
+
+## 合同状态
+
+| 项 | 内容 |
+| --- | --- |
+| 需求名称 | demo |
+| 复杂度档位 | S |
+| 状态 | 已冻结 |
+| 冻结时间 | 2026-01-01 |
+| 冻结确认 | 用户于会话中确认 |
+| Definition Lint | 通过 |
+
+## ★ 目标与非目标
+
+- WHEN 用户提交空表单 THE SYSTEM SHALL 阻止提交
+
+## ★ 术语表
+
+| 术语 | 本合同内的精确定义 | 被替代的模糊说法 |
+| --- | --- | --- |
+| 提交成功 | 服务端返回 201 且列表可见 | 提交成功 |
+
+## ★ 验收 Oracle
+
+| ID | 验收标准 | 验证方法 | 类型 | blocking | 状态 | 证据 | 更新时间 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| O-001 | WHEN 提交空表单 THE SYSTEM SHALL 阻止并提示 | npm test -- form.spec | auto | 是 | PASS | 输出片段 | 2026-01-01 |
+
+## ★ 待澄清项
+
+- 无
+
+## 修订记录
+
+| 时间 | 修订内容 | 原因 | 用户确认 |
+| --- | --- | --- | --- |
+`;
+write('features/demo/00-完成合同.md', goodContract);
+const goodRun = spawnSync(process.execPath, [checker, path.join(tmp, 'features/demo/00-完成合同.md')], { encoding: 'utf8' });
+if (goodRun.status !== 0) {
+  throw new Error(`check-contract should pass a valid contract: ${goodRun.stdout} ${goodRun.stderr}`);
+}
+const badContract = goodContract
+  .replace('| Definition Lint | 通过 |', '| Definition Lint | 未运行 |')
+  .replace('npm test -- form.spec', '待填写');
+write('features/demo-bad/00-完成合同.md', badContract);
+const badRun = spawnSync(process.execPath, [checker, path.join(tmp, 'features/demo-bad/00-完成合同.md')], { encoding: 'utf8' });
+if (badRun.status === 0) {
+  throw new Error('check-contract should fail a frozen contract without lint pass and verification method');
+}
 
 // The Cursor rule must explain how to run a stage via Cursor custom commands.
 assertContains('.cursor/rules/agent-workflow-core.mdc', '.cursor/commands/');

@@ -41,10 +41,11 @@
   "bin": {
     "agent-workflow-init": "bin/init-workspace.cjs",
     "openone-workflow-init": "bin/init-workspace.cjs",
-    "agent-workflow-check-sanitized": "bin/check-sanitized.cjs"
+    "agent-workflow-check-sanitized": "bin/check-sanitized.cjs",
+    "openone-workflow-check-contract": "bin/check-contract.cjs"
   },
   "scripts": {
-    "check": "node --check bin/init-workspace.cjs && node --check bin/check-sanitized.cjs && node --check test/smoke.cjs && node --check scripts/build-release.cjs && node bin/check-sanitized.cjs && node test/smoke.cjs",
+    "check": "node --check bin/init-workspace.cjs && node --check bin/check-sanitized.cjs && node --check bin/check-contract.cjs && node --check test/smoke.cjs && node --check scripts/build-release.cjs && node bin/check-sanitized.cjs && node test/smoke.cjs",
     "build:release": "node scripts/build-release.cjs",
     "init:dry-run": "node bin/init-workspace.cjs --target . --dry-run"
   },

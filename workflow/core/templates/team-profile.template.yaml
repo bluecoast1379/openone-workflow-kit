@@ -90,9 +90,15 @@ risk_policy:
 workflow:
   features_dir: "features"
   business_dir: "business"
+  specs_dir: "specs"
+  standards_dir: "workflow/standards"
+  constitution: "workflow/constitution.md"
   core_dir: "workflow/core"
   adapters_dir: "workflow/adapters"
   require_stage_gate_for_code: true
   require_feature_branch_for_code: true
+  complexity_tiers: "S/M/L"
+  definition_gate: "frozen-contract-with-lint-required-for-m-l; starred-mini-contract-for-s"
+  done_verdict: "all-blocking-oracles-pass-or-user-waived"
   same_repo_parallel_policy: "worktree-required-after-implementation-stage"
   business_review_cadence: "weekly-metrics, monthly-strategy, quarterly-positioning"

@@ -24,6 +24,8 @@ Capabilities 是可复用检查能力。不同工具可以把它们实现成 pro
 
 | 分层 | Capability | 用途 | 阶段 |
 | --- | --- | --- | --- |
+| essential | [definition-lint](./definition-lint.md) | 冻结前按八维度检查完成合同，配按项目类型的定义面试题库 | `/定义完成` |
+| essential | [acceptance-oracle-tracker](./acceptance-oracle-tracker.md) | 验收 Oracle 状态机：绑定验证方法、证据与 STALE 复验，完成=blocking 全绿 | `/定义完成`, `/07`, `/交付至完成`, `/08` |
 | essential | [branch-gatekeeper](./branch-gatekeeper.md) | 阻止在错误分支或错误阶段修改业务代码 | `/04` |
 | essential | [release-safety-checker](./release-safety-checker.md) | 对比发布候选与生产基线，防止范围漂移 | `/05`, `/07`, `/08`, `/09` |
 | essential | [prd-code-diff-checker](./prd-code-diff-checker.md) | 对比产品意图、技术方案与真实 diff | `/05` |

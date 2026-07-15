@@ -16,8 +16,9 @@ const GENERATED_BY = 'openone-workflow-kit 0.1.0';
 
 const STAGES = [
   ['init-workspace', '初始化工作区', '扫描本地资料、生成 team-profile、缺资料提问，并生成当前工具 adapter。'],
-  ['new-feature', '初始化功能工作流', '创建 features/{feature}/ 容器、状态文件和截图目录。'],
+  ['new-feature', '初始化功能工作流', '创建 features/{feature}/ 容器、状态文件和截图目录，并完成 S/M/L 复杂度分级。'],
   ['01-需求讨论', '需求讨论', '澄清业务目标、边界、验收口径和待确认项。'],
+  ['澄清', '澄清', '每轮不超过 5 个针对性问题消融语义歧义，答案写回文档并清理待澄清标记。'],
   ['02-产品文档', '产品文档', '输出 PRD、业务规则、高层 UI 方向、非功能需求和验收口径。'],
   ['02B-UI设计', 'UI 设计', '在产品文档后输出可被实现遵循的信息架构、关键流程、页面清单、组件规范、平台适配、可访问性和 04A 交接规范。'],
   ['03-技术架构', '技术架构', '识别项目族、影响仓库、调用链、分支基线和实现准入风险。'],
@@ -26,8 +27,11 @@ const STAGES = [
   ['04A-前端代码实现', '前端代码实现', '记录页面、组件、接口、状态、回显和前端验证。'],
   ['04B-后端代码实现', '后端代码实现', '记录接口、服务、数据、事务、消息、配置和后端验证。'],
   ['05-代码审查', '代码审查', '以问题优先方式审查真实 diff、发布边界、PRD 一致性和残余风险。'],
-  ['06-测试用例', '测试用例', '输出正常流、异常流、边界流、权限和回归覆盖矩阵。'],
-  ['07-测试执行', '测试执行', '记录真实执行结果、证据、阻塞、缺陷和发布候选差异核查。'],
+  ['06-测试用例', '测试用例', '以风险驱动方式输出覆盖矩阵，每条用例可绑定为完成合同的验收 Oracle。'],
+  ['定义完成', '定义完成', '把 01-06 结论编译成完成合同，通过 Definition Lint 后经用户确认冻结。'],
+  ['一致性检查', '一致性检查', '实现前对合同与各阶段文档做只读交叉检查，逮住冲突、漂移和覆盖缺口。'],
+  ['交付至完成', '交付至完成', '合同冻结后在范围内自主循环实现-验证-修复，直到 blocking Oracle 全绿或精确阻塞。'],
+  ['07-测试执行', '测试执行', '记录真实执行结果与证据，翻转完成合同的 Oracle 状态。'],
   ['08-发布准备', '发布准备', '完成个人项目的本地集成、版本号、tag、发布清单、回滚点和渠道材料。'],
   ['09-发布执行', '发布执行', '在用户明确授权后执行远程 push、release、商店/平台发布或部署，并记录证据。'],
   ['10-复盘总结', '复盘总结', '沉淀项目结论、可复用规则、知识库更新和下一轮改进项。'],
@@ -127,7 +131,9 @@ const CAPABILITY_FILES = [
   'memory-curator.md',
   'rule-extractor.md',
   'market-evidence-grader.md',
-  'channel-experiment-tracker.md'
+  'channel-experiment-tracker.md',
+  'definition-lint.md',
+  'acceptance-oracle-tracker.md'
 ];
 
 main().catch((error) => {
@@ -400,6 +406,12 @@ function buildInstallPlan(target, profile, options) {
   add('workflow/core/templates/stage-document.md', readKitFile('workflow/core/templates/stage-document.md'));
   add('workflow/core/templates/00-business-status.md', readKitFile('workflow/core/templates/00-business-status.md'));
   add('workflow/core/templates/business-stage-document.md', readKitFile('workflow/core/templates/business-stage-document.md'));
+  add('workflow/core/templates/completion-contract.md', readKitFile('workflow/core/templates/completion-contract.md'));
+  add('workflow/core/templates/constitution.template.md', readKitFile('workflow/core/templates/constitution.template.md'));
+  add('workflow/core/templates/living-spec.md', readKitFile('workflow/core/templates/living-spec.md'));
+  add('workflow/constitution.md', readKitFile('workflow/core/templates/constitution.template.md'));
+  add('workflow/standards/README.md', makeStandardsReadme());
+  add('specs/README.md', makeSpecsReadme());
   add('workflow/core/templates/team-profile.template.yaml', readKitFile('workflow/core/templates/team-profile.template.yaml'));
   add('workflow/core/capabilities/README.md', readKitFile('workflow/core/capabilities/README.md'));
   for (const name of CAPABILITY_FILES) {
@@ -557,10 +569,16 @@ function makeTeamProfileYaml(profile) {
   lines.push('workflow:');
   lines.push('  features_dir: "features"');
   lines.push('  business_dir: "business"');
+  lines.push('  specs_dir: "specs"');
+  lines.push('  standards_dir: "workflow/standards"');
+  lines.push('  constitution: "workflow/constitution.md"');
   lines.push('  core_dir: "workflow/core"');
   lines.push('  adapters_dir: "workflow/adapters"');
   lines.push('  require_stage_gate_for_code: true');
   lines.push('  require_feature_branch_for_code: true');
+  lines.push('  complexity_tiers: "S/M/L"');
+  lines.push('  definition_gate: "frozen-contract-with-lint-required-for-m-l; starred-mini-contract-for-s"');
+  lines.push('  done_verdict: "all-blocking-oracles-pass-or-user-waived"');
   lines.push('  same_repo_parallel_policy: "worktree-required-after-implementation-stage"');
   lines.push('  business_review_cadence: "weekly-metrics, monthly-strategy, quarterly-positioning"');
   lines.push('');
@@ -576,10 +594,14 @@ function makeWorkflowReadme() {
 
 本目录由 ${GENERATED_BY} 生成，用于个人开发者项目。
 
-- \`team-profile.yaml\`: 当前个人项目或个人工作区的本地配置。
+- \`team-profile.yaml\`: 当前个人项目或个人工作区的本地配置（事实与路径）。
+- \`constitution.md\`: 工作区宪法——跨需求不可协商的原则。
+- \`standards/\`: 从既有代码库提取的个人规范层。
 - \`core/\`: 工具无关的工作流规则、命令、模板和能力。
 - \`adapters/\`: 支持工具的 adapter 说明。
 - \`INITIALIZATION_QUESTIONS.md\`: 缺少必要本地资料时生成的问题清单。
+
+研发轨判定核心是《完成合同》（\`features/<feature>/00-完成合同.md\`）：\`/定义完成\` 编译并冻结合同，宣布完成 = blocking Oracle 全 PASS；工作区级 \`specs/\` 沉淀已发布行为的 living specs。
 
 默认使用简体中文展示工作流沟通、阶段产物、状态摘要、审查结论、测试记录、发布记录和复盘；专有名词、产品名、代码标识符、命令、文件路径、分支名、API、SDK、框架、协议、标准、错误信息和官方英文术语保留原文。
 
@@ -592,6 +614,31 @@ function makeWorkflowReadme() {
 个人工作流允许 agent 在明确任务范围内执行本地 git 分支命名、创建、commit、tag 和本地 merge。远程 push、GitHub release、商店发布、部署和生产配置写入需要用户明确授权。
 
 不要把凭证、真实客户秘密或私有 URL 写入通用 core 文件。项目知识应保留在 \`team-profile.yaml\`、\`features/<feature>/\` 或本地资料中。
+`;
+}
+
+function makeStandardsReadme() {
+  return `# 个人规范层（standards）
+
+本目录存放**从既有代码库提取的可复用规范**：命名、目录结构、错误处理、依赖选型、提交信息等模式。原则放 \`workflow/constitution.md\`，事实与路径放 \`workflow/team-profile.yaml\`，本目录只放"怎么写代码"的规范。
+
+- 来源：\`/03-技术架构\` 阶段从现有代码中提取；\`/10-复盘总结\` 沉淀新规则。
+- 用法：\`/定义完成\` 的影响边界、\`/04\` 实现和 \`/05\` 审查都以本目录为基准；已有规范直接引用，不重复发明。
+- 格式：每个主题一个 Markdown 文件（例：\`naming.md\`、\`error-handling.md\`），写清规则、正例、反例和适用范围。
+- 空目录是正常状态：规范应随真实需求逐步沉淀，不要一次性凭空编写。
+`;
+}
+
+function makeSpecsReadme() {
+  return `# Living Specs（行为真相层）
+
+本目录存放**当前已实现并已发布**的行为规格，是存量项目（brownfield）需求定义的起点。
+
+- 与 \`features/\` 的关系：features 是变更流水（做过什么），specs 是当前状态（现在是什么）。
+- 读：\`/01-需求讨论\`、\`/定义完成\`、\`/06-测试用例\`（回归范围）、\`/一致性检查\` 都先读本目录；触碰已有行为的需求必须显式声明改变哪几条行为编号。
+- 写：只有 \`/10-复盘总结\` 在发布后把已验证的行为增量合并进来；未发布的计划不进本目录。
+- 格式：每个领域/模块一个文件，按 \`workflow/core/templates/living-spec.md\` 组织（EARS 句式行为清单 + 数据模型 + 对外契约 + 边界）。
+- 空目录是正常状态：首个需求发布后开始沉淀。
 `;
 }
 
@@ -642,6 +689,7 @@ ${title}: ${description}
 
 - \`AGENTS.md\`
 - \`workflow/team-profile.yaml\`
+- \`workflow/constitution.md\`
 - \`${containerDir}/\` 下的前序阶段文档
 - team-profile 中登记的本地代码、本地文档和用户提供资料
 
@@ -727,16 +775,16 @@ function makeToolUsage(profile) {
 function makeAgentsEntry(profile) {
   return `# Agent Workflow
 
-本工作区使用 ${GENERATED_BY} 生成的工具无关个人开发者 agent 工作流。它包含两条共享同一套闸门口径的轨道：研发轨把一个需求从澄清推进到发布和复盘；商业化轨把一个产品从业务定位、商业模式、PMF 验证推进到渠道策略、预算和策略复盘。不同 AI 工具共享同一套 workflow core，每个工具只生成薄 adapter；体验会随工具能力增强或降级，但流程口径一致。
+本工作区使用 ${GENERATED_BY} 生成的工具无关个人开发者 agent 工作流。它包含两条共享同一套闸门口径的轨道：研发轨把一个需求从澄清、完成合同冻结推进到实现、发布和复盘；商业化轨把一个产品从业务定位、商业模式、PMF 验证推进到渠道策略、预算和策略复盘。判定核心是《完成合同》：宣布完成 = blocking Oracle 全 PASS 的机器判定，不是"感觉做完了"。不同 AI 工具共享同一套 workflow core，每个工具只生成薄 adapter；体验会随工具能力增强或降级，但流程口径一致。
 
 ## 快速开始
 
-1. 先读取 \`workflow/team-profile.yaml\`，加载当前个人项目或个人工作区的仓库、分支模型和资料来源。
-2. 研发轨：用 \`/new-feature <name>\` 初始化需求，它会创建 \`features/<name>/\` 和状态文件；按顺序推进 \`/01-需求讨论\` -> \`/02-产品文档\` -> \`/02B-UI设计\` -> \`/03-技术架构\` -> \`/04-代码实现\` -> \`/05-代码审查\` -> \`/06-测试用例\` -> \`/07-测试执行\` -> \`/08-发布准备\` -> \`/09-发布执行\` -> \`/10-复盘总结\`。
+1. 先读取 \`workflow/team-profile.yaml\`（事实与路径）、\`workflow/constitution.md\`（不可协商原则）；存量项目再读工作区级 \`specs/\`（已实现行为真相）。
+2. 研发轨：用 \`/new-feature <name>\` 初始化需求并完成 S/M/L 复杂度分级。M/L 档推荐顺序：\`/01-需求讨论\` ->（\`/澄清\`）-> \`/02-产品文档\` -> \`/02B-UI设计\` -> \`/03-技术架构\` -> \`/06-测试用例\` -> \`/定义完成\`（编译完成合同，Definition Lint 通过后经用户确认冻结）-> \`/一致性检查\` -> \`/交付至完成\`（或手动 \`/04-代码实现\` -> \`/05-代码审查\` -> \`/07-测试执行\`）-> \`/08-发布准备\` -> \`/09-发布执行\` -> \`/10-复盘总结\`。S 档压缩为：\`/定义完成\`（迷你合同）-> 实现 -> 验证。
 3. 商业化轨：用 \`/new-product <name>\` 初始化产品商业化容器 \`business/<name>/\`；首次可用 \`/B1-B8-商业化准备\` 一次性串联生成 \`/B1-业务定位\` -> \`/B2-商业模式\` -> \`/B3-PMF与客户画像\` -> \`/B4-场景与购买旅程\` -> \`/B5-渠道漏斗映射\` -> \`/B6-营销获客策略\` -> \`/B7-营销预算\` -> \`/B8-渠道执行策略\`；上线后按周期执行 \`/B9-策略复盘\`。
-4. 两轨衔接：\`/01\`、\`/02\` 读取商业化基线（定位、ICP、场景、商业模式）；\`/08\`、\`/09\` 对照 B5/B8 准备发布营销材料和分发清单；\`/10\` 的增长信号回流 \`/B9\`；B8 的营销工程需求（landing、SEO 页面、埋点）通过 \`/new-feature\` 进入研发轨。
+4. 两轨衔接：\`/01\`、\`/02\` 读取商业化基线（定位、ICP、场景、商业模式），完成合同记录北极星挂钩；\`/08\`、\`/09\` 对照 B5/B8 准备发布营销材料和分发清单；\`/10\` 的增长信号回流 \`/B9\`，行为增量回写 \`specs/\`；B8 的营销工程需求（landing、SEO 页面、埋点）通过 \`/new-feature\` 进入研发轨。
 5. 每个阶段都必须读取所在容器（\`features/<name>/\` 或 \`business/<name>/\`）下的前序文档，并把本阶段产物写回同目录。
-6. 随时可执行 \`/workflow-status\` 汇总两轨全部需求和产品的阶段、阻塞和下一步。
+6. 随时可执行 \`/workflow-status\` 汇总两轨全部需求和产品的阶段、合同与 Oracle 进度、阻塞和下一步。
 
 不同工具触发阶段的方式不同，见下方“工具使用方式”。
 
@@ -755,9 +803,12 @@ ${makeCommandTable()}
 ## 单一事实源
 
 - 工作流规则：\`workflow/core/\`
-- 工作区配置：\`workflow/team-profile.yaml\`
+- 工作区配置（事实与路径）：\`workflow/team-profile.yaml\`
+- 工作区宪法（不可协商原则）：\`workflow/constitution.md\`
+- 个人规范层：\`workflow/standards/\`
+- 行为真相层（living specs）：工作区级 \`specs/\`
 - 可复用检查能力：\`workflow/core/capabilities/\`
-- 需求产物：工作区级 \`features/<feature>/\`
+- 需求产物与完成合同：工作区级 \`features/<feature>/\`（合同为 \`00-完成合同.md\`）
 - 商业化产物：工作区级 \`business/<product>/\`
 - 工具 adapter：仅作为生成的薄入口
 
@@ -773,6 +824,10 @@ ${makeCommandTable()}
 - 商业化轨（\`/new-product\`、\`/B1\` 到 \`/B9\`）只产出文档和清单：对外发布内容、投放广告、发送 cold email、联系 influencer 或合作伙伴必须有用户明确授权或由用户自行执行；付费投放支出由用户手动执行。
 - 商业化结论必须做证据分级（一手/二手/推断）并注明来源和日期，不得编造市场数据、用户评价或竞品价格。
 - 营销工程需求（landing page、SEO 页面、埋点、A/B 测试）必须通过 \`/new-feature\` 进入研发轨并遵守其全部闸门，不在 B 阶段直接修改代码。
+- **完成合同闸门**：M/L 档需求进入实现（\`/04\` 或 \`/交付至完成\`）前，\`features/<feature>/00-完成合同.md\` 必须已冻结且 Definition Lint 通过；S 档必须有 ★ 必填节完整的迷你合同。冻结需用户明确确认。
+- **合同不可静默修改**：冻结后的标准、阈值、blocking 标记只能走修订记录并经用户再次确认；改测试换通过按高危问题处理。
+- **完成判定**：宣布完成 = blocking Oracle 全部 PASS（或用户书面确认 WAIVED）；Oracle 状态只能由 \`/交付至完成\` 或 \`/07-测试执行\` 翻转且必须附证据；PASS 后代码再变更置 STALE 必须复验。
+- \`workflow/constitution.md\` 在所有阶段不可协商；与需求冲突时先经用户确认修订宪法，不得绕过。
 
 ## 工具能力策略
 
@@ -799,6 +854,8 @@ ${profile.enabledTools.map((tool) => `- ${tool}`).join('\n')}
 - \`workflow/README.md\`：工作流总览。
 - \`workflow/core/commands/\`：各阶段契约。
 - \`workflow/core/capabilities/README.md\`：可复用检查能力及工具适配方式。
+- \`workflow/core/templates/completion-contract.md\`：完成合同模板（可用 \`openone-workflow-check-contract\` 校验结构）。
+- \`workflow/constitution.md\`：工作区宪法；\`workflow/standards/\`：个人规范层；\`specs/\`：living specs。
 - \`workflow/team-profile.yaml\`：当前工作区配置和资料扫描结果。
 
 ## 开始
@@ -856,9 +913,10 @@ agent 随后读取阶段契约、\`workflow/team-profile.yaml\` 和前序
 
 ## 阶段顺序
 
-研发轨：
-new-feature -> 01-需求讨论 -> 02-产品文档 -> 02B-UI设计 -> 03-技术架构 -> 04-代码实现 -> 05-代码审查 ->
-06-测试用例 -> 07-测试执行 -> 08-发布准备 -> 09-发布执行 -> 10-复盘总结
+研发轨（M/L 档）：
+new-feature（S/M/L 分级）-> 01-需求讨论 ->（澄清）-> 02-产品文档 -> 02B-UI设计 -> 03-技术架构 ->
+06-测试用例 -> 定义完成（冻结完成合同）-> 一致性检查 -> 交付至完成（或 04 -> 05 -> 07）->
+08-发布准备 -> 09-发布执行 -> 10-复盘总结；S 档：定义完成（迷你合同）-> 实现 -> 验证
 
 商业化轨：
 new-product -> B1-业务定位 -> B2-商业模式 -> B3-PMF与客户画像 -> B4-场景与购买旅程 ->
@@ -880,6 +938,7 @@ B5-渠道漏斗映射 -> B6-营销获客策略 -> B7-营销预算 -> B8-渠道�
 ## 硬闸门
 
 - 功能分支闸门和实现阶段闸门通过前，禁止修改业务代码。
+- M/L 档需求进入实现前，完成合同必须已冻结且 Definition Lint 通过；宣布完成 = blocking Oracle 全 PASS。
 - 有 UI 或前端工作的需求必须先完成 \`/02B-UI设计\`，\`/04A-前端代码实现\` 必须遵循对应设计基线。
 - 本地分支命名、创建、commit、tag 和本地 merge 可由 agent 在个人项目中执行；远程 push、release、部署、数据库写入和生产配置写入需要用户明确授权。
 - 同仓并行实现进入实现阶段后必须使用独立 worktree。
