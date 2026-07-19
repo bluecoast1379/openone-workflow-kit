@@ -136,10 +136,20 @@ const CAPABILITY_FILES = [
   'acceptance-oracle-tracker.md'
 ];
 
-main().catch((error) => {
-  console.error(error && error.stack ? error.stack : String(error));
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(error && error.stack ? error.stack : String(error));
+    process.exit(1);
+  });
+}
+
+module.exports = { toPortablePath };
+
+// Paths persisted in generated workflow artifacts are workspace-relative
+// identifiers, not host-OS paths. Keep them stable across Windows/macOS/Linux.
+function toPortablePath(value) {
+  return String(value).replace(/\\/g, '/');
+}
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
@@ -289,7 +299,7 @@ function scanRepos(root) {
       return;
     }
 
-    const rel = path.relative(root, dir) || '.';
+    const rel = toPortablePath(path.relative(root, dir)) || '.';
     const marker = detectRepoMarker(dir);
     if (marker && !seen.has(rel)) {
       seen.add(rel);
@@ -358,7 +368,7 @@ function scanRequiredSources(root) {
   walkFiles(root, 4, (file) => {
     const ext = path.extname(file).toLowerCase();
     if (!['.md', '.txt', '.docx', '.pdf', '.yaml', '.yml', '.json'].includes(ext)) return;
-    candidates.push(path.relative(root, file));
+    candidates.push(toPortablePath(path.relative(root, file)));
   });
 
   const result = {};
