@@ -14,19 +14,24 @@ npx openone-workflow-init --target . --tools codex,claude,cursor --yes
 
 ```bash
 cd /path/to/target-workspace
-npm install git+https://github.com/bluecoast1379/openone-workflow-kit.git --save-dev
+npm install "git+https://github.com/bluecoast1379/openone-workflow-kit.git#v0.1.0" --save-dev
 npx openone-workflow-init --target . --tools codex,claude,cursor --yes
 ```
 
-如果使用 fork 或私有 mirror，请替换 URL。初始化器只在本地工作区运行。
+如果使用 fork 或私有 mirror，请替换 URL。公开 Tag 之前请改用已验证的完整 commit SHA，不要把可变的 `main` 当作发布版本。初始化器只在本地工作区运行。
 
 ## 从 package registry 安装
 
+先确认 Registry 中的确实存在对应版本：
+
 ```bash
 cd /path/to/target-workspace
-npm install openone-workflow-kit --save-dev
+npm view openone-workflow-kit@0.1.0 version
+npm install openone-workflow-kit@0.1.0 --save-dev
 npx openone-workflow-init --target . --tools codex,claude,cursor --yes
 ```
+
+预期 `npm view` 输出 `0.1.0`。如果 Registry 尚未返回该版本，不应声称 npm 安装路径可用；请使用上方的已验证 tarball 或不可变 Git 引用。
 
 ## 会生成什么
 

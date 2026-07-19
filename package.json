@@ -2,15 +2,20 @@
   "name": "openone-workflow-kit",
   "version": "0.1.0",
   "private": false,
-  "description": "面向个人开发者的工具无关 agent 研发工作流 kit，支持本地初始化、多工具 adapter、个人发布和知识沉淀。",
+  "description": "面向独立开发者的工具无关 Agent 研发与商业化双轨工作流 kit，支持可验证交付、多工具适配、发布与增长复盘。",
   "keywords": [
     "agent-workflow",
     "workflow",
     "codex",
     "claude-code",
     "cursor",
+    "github-copilot",
     "codebuddy",
+    "kiro",
     "trae",
+    "solo-developer",
+    "product-management",
+    "commercialization",
     "software-delivery"
   ],
   "homepage": "https://github.com/bluecoast1379/openone-workflow-kit#readme",
@@ -21,8 +26,12 @@
   "bugs": {
     "url": "https://github.com/bluecoast1379/openone-workflow-kit/issues"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
     "README.md",
+    "CHANGELOG.md",
     "INIT.md",
     "LICENSE",
     "NOTICE",
@@ -45,7 +54,7 @@
     "openone-workflow-check-contract": "bin/check-contract.cjs"
   },
   "scripts": {
-    "check": "node --check bin/init-workspace.cjs && node --check bin/check-sanitized.cjs && node --check bin/check-contract.cjs && node --check test/smoke.cjs && node --check scripts/build-release.cjs && node bin/check-sanitized.cjs && node test/smoke.cjs",
+    "check": "node --check bin/init-workspace.cjs && node --check bin/check-sanitized.cjs && node --check bin/check-contract.cjs && node --check test/smoke.cjs && node --check test/release-readiness.cjs && node --check scripts/release-source-state.cjs && node --check scripts/build-release.cjs && node bin/check-sanitized.cjs && node test/smoke.cjs && node test/release-readiness.cjs",
     "build:release": "node scripts/build-release.cjs",
     "init:dry-run": "node bin/init-workspace.cjs --target . --dry-run"
   },
