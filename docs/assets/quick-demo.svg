@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="720" viewBox="0 0 1440 720" role="img" aria-labelledby="title desc">
+  <title id="title">OpenOne Workflow Kit 30-second quick demo</title>
+  <desc id="desc">Three steps: create a clean workspace, run OpenOne Workflow Kit version 0.1.0 for Codex and Cursor, then verify the team profile and agent guide were generated.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#070B14"/>
+      <stop offset="1" stop-color="#0B1220"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#F59E0B"/>
+      <stop offset="1" stop-color="#FB7185"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="28" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <rect width="1440" height="720" rx="32" fill="url(#bg)"/>
+  <circle cx="1270" cy="60" r="330" fill="#F59E0B" fill-opacity="0.08"/>
+  <circle cx="180" cy="700" r="300" fill="#FB7185" fill-opacity="0.07"/>
+
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+    <text x="82" y="88" fill="#F59E0B" font-size="18" font-weight="700" letter-spacing="1.6">30-SECOND QUICK DEMO</text>
+    <text x="82" y="146" fill="#F8FAFC" font-size="48" font-weight="700" letter-spacing="-1.5">三步生成一套可执行的个人工作流</text>
+    <text x="82" y="184" fill="#A7B0C0" font-size="20">冷启动下载时间不计入；命令同时在 README 中提供可复制文本。</text>
+
+    <g transform="translate(82 224)">
+      <g>
+        <circle cx="24" cy="24" r="24" fill="#F59E0B"/>
+        <text x="24" y="32" fill="#070B14" font-size="22" font-weight="800" text-anchor="middle">1</text>
+        <text x="62" y="21" fill="#F8FAFC" font-size="21" font-weight="700">准备空目录</text>
+        <text x="62" y="48" fill="#A7B0C0" font-size="17">Create a clean workspace</text>
+      </g>
+      <path d="M364 24H418" stroke="#A7B0C0" stroke-opacity="0.5" stroke-width="2"/>
+      <path d="m408 16 10 8-10 8" fill="none" stroke="#A7B0C0" stroke-opacity="0.7" stroke-width="2"/>
+      <g transform="translate(446)">
+        <circle cx="24" cy="24" r="24" fill="#FB7185"/>
+        <text x="24" y="32" fill="#070B14" font-size="22" font-weight="800" text-anchor="middle">2</text>
+        <text x="62" y="21" fill="#F8FAFC" font-size="21" font-weight="700">运行 v0.1.0</text>
+        <text x="62" y="48" fill="#A7B0C0" font-size="17">Generate selected adapters</text>
+      </g>
+      <path d="M810 24H864" stroke="#A7B0C0" stroke-opacity="0.5" stroke-width="2"/>
+      <path d="m854 16 10 8-10 8" fill="none" stroke="#A7B0C0" stroke-opacity="0.7" stroke-width="2"/>
+      <g transform="translate(892)">
+        <circle cx="24" cy="24" r="24" fill="url(#accent)"/>
+        <path d="m15 25 6 6 13-15" fill="none" stroke="#070B14" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="62" y="21" fill="#F8FAFC" font-size="21" font-weight="700">验证产物</text>
+        <text x="62" y="48" fill="#A7B0C0" font-size="17">Profile + agent guide ready</text>
+      </g>
+    </g>
+
+    <g transform="translate(82 320)" filter="url(#shadow)">
+      <rect width="1276" height="324" rx="28" fill="#0D1524" stroke="#A7B0C0" stroke-opacity="0.18"/>
+      <rect width="1276" height="54" rx="28" fill="#131D2D"/>
+      <path d="M0 54H1276" stroke="#A7B0C0" stroke-opacity="0.15"/>
+      <circle cx="28" cy="27" r="6" fill="#FB7185"/>
+      <circle cx="50" cy="27" r="6" fill="#F59E0B"/>
+      <circle cx="72" cy="27" r="6" fill="#A3E635"/>
+      <text x="638" y="34" fill="#A7B0C0" font-size="15" text-anchor="middle">terminal — openone-demo</text>
+
+      <g font-family="SFMono-Regular, Consolas, 'Liberation Mono', monospace" font-size="18">
+        <text x="34" y="96" fill="#F59E0B">$</text>
+        <text x="58" y="96" fill="#F8FAFC">mkdir openone-demo &amp;&amp; cd openone-demo</text>
+        <text x="34" y="142" fill="#F59E0B">$</text>
+        <text x="58" y="142" fill="#F8FAFC">npx --yes --package openone-workflow-kit@0.1.0 openone-workflow-init </text>
+        <text x="58" y="176" fill="#F8FAFC">  --target . --tools codex,cursor --yes</text>
+        <text x="34" y="222" fill="#F59E0B">$</text>
+        <text x="58" y="222" fill="#F8FAFC">node -e "for (const f of ['workflow/team-profile.yaml','AGENTS.md'])</text>
+        <text x="58" y="256" fill="#F8FAFC">  require('node:fs').accessSync(f); console.log('OpenOne ready')"</text>
+        <text x="34" y="302" fill="#A3E635">✓ OpenOne ready</text>
+      </g>
+    </g>
+  </g>
+</svg>

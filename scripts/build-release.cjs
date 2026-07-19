@@ -3,11 +3,19 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { spawnSync } = require('child_process');
+const {
+  assertCleanReleaseSource,
+  readReleaseSourceState,
+  releaseSourceManifestLines
+} = require('./release-source-state.cjs');
 
 const root = path.resolve(__dirname, '..');
 const dist = path.join(root, 'dist');
 const localNpmCache = path.join(dist, '.npm-cache');
 const localMiseCache = path.join(dist, '.mise-cache');
+const sourceState = readReleaseSourceState(root);
+
+assertCleanReleaseSource(sourceState);
 
 fs.rmSync(dist, { recursive: true, force: true });
 fs.mkdirSync(dist, { recursive: true });
@@ -16,9 +24,9 @@ fs.mkdirSync(localMiseCache, { recursive: true });
 
 const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 
-run('npm', ['run', 'check', '--', '--skip-release-build']);
+runNpm(['run', 'check', '--', '--skip-release-build']);
 
-const pack = run('npm', ['pack', '--pack-destination', dist, '--json']);
+const pack = runNpm(['pack', '--pack-destination', dist, '--json']);
 let packed;
 try {
   packed = JSON.parse(pack.stdout)[0];
@@ -38,9 +46,21 @@ fs.mkdirSync(path.join(installTarget, 'app'), { recursive: true });
 fs.writeFileSync(path.join(installTarget, 'docs', 'business-overview.md'), '# Business overview\n');
 fs.writeFileSync(path.join(installTarget, 'app', 'package.json'), '{"dependencies":{"react":"latest"}}\n');
 
-run('npm', ['install', '--prefix', installPrefix, '--no-audit', '--no-fund', tarball]);
-const installedBin = path.join(installPrefix, 'node_modules', '.bin', process.platform === 'win32' ? 'agent-workflow-init.cmd' : 'agent-workflow-init');
-run(installedBin, ['--target', installTarget, '--tools', 'codex,trea,codebuddy', '--yes']);
+runNpm(['install', '--prefix', installPrefix, '--no-audit', '--no-fund', tarball]);
+const installedPackageRoot = path.join(installPrefix, 'node_modules', packageJson.name);
+// The npm package intentionally excludes repository-only GitHub configuration.
+// Run the public package's own checks after installation to prove that all
+// packaged release assets remain self-consistent without relying on `.github/`.
+runNpm(['--prefix', installedPackageRoot, 'run', 'check']);
+// Invoke the installed CommonJS entry with Node instead of executing npm's
+// platform-specific .bin shim. This keeps the release smoke identical on
+// Linux, macOS and Windows runners.
+const installedEntry = path.join(
+  installedPackageRoot,
+  'bin',
+  'init-workspace.cjs'
+);
+run(process.execPath, [installedEntry, '--target', installTarget, '--tools', 'codex,trea,codebuddy', '--yes']);
 for (const rel of [
   'AGENTS.md',
   '.trae/instructions.md',
@@ -54,6 +74,11 @@ for (const rel of [
 
 const bytes = fs.readFileSync(tarball);
 const sha256 = crypto.createHash('sha256').update(bytes).digest('hex');
+const finalSourceState = readReleaseSourceState(root);
+assertCleanReleaseSource(finalSourceState);
+if (finalSourceState.commit !== sourceState.commit || finalSourceState.tree !== sourceState.tree) {
+  throw new Error('发布构建期间 source commit 或 source tree 发生变化；拒绝生成无法绑定 reviewed commit 的 manifest');
+}
 const manifest = [
   '# 发布清单',
   '',
@@ -64,7 +89,9 @@ const manifest = [
   `- size: ${packed.size}`,
   `- unpacked_size: ${packed.unpackedSize}`,
   `- sha256: ${sha256}`,
+  ...releaseSourceManifestLines(sourceState),
   '- install_smoke: passed',
+  '- installed_package_check: passed',
   `- generated_at: ${new Date().toISOString()}`,
   '',
   '## 文件内容',
@@ -83,6 +110,19 @@ fs.rmSync(localMiseCache, { recursive: true, force: true });
 
 fs.writeFileSync(path.join(dist, 'RELEASE_MANIFEST.md'), manifest);
 console.log(manifest);
+
+function runNpm(args) {
+  // npm exposes the exact CLI entry while running an npm script. Invoking that
+  // entry with Node avoids .cmd resolution differences on Windows.
+  const npmExecPath = process.env.npm_execpath;
+  if (npmExecPath && fs.existsSync(npmExecPath)) {
+    return run(process.execPath, [npmExecPath, ...args]);
+  }
+  if (process.platform === 'win32') {
+    return run(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', 'npm', ...args]);
+  }
+  return run('npm', args);
+}
 
 function run(cmd, args) {
   const result = spawnSync(cmd, args, {

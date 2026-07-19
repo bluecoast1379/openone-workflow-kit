@@ -6,7 +6,15 @@ const { spawnSync } = require('child_process');
 
 const root = path.resolve(__dirname, '..');
 const init = path.join(root, 'bin', 'init-workspace.cjs');
+const { toPortablePath } = require(init);
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-workflow-smoke-'));
+
+// Windows path.relative() emits backslashes. Generated team-profile paths are
+// portable identifiers and must always use POSIX separators.
+const windowsRepoPath = path.win32.relative('C:\\workspace', 'C:\\workspace\\apps\\web');
+if (toPortablePath(windowsRepoPath) !== 'apps/web') {
+  throw new Error(`Windows relative path was not normalized: ${windowsRepoPath}`);
+}
 
 function mkdir(rel) {
   fs.mkdirSync(path.join(tmp, rel), { recursive: true });

@@ -6,8 +6,11 @@
 
 - `npm run check` 通过。
 - `npm run build:release` 通过。
+- `dist/RELEASE_MANIFEST.md` 的 `source_commit` 等于 reviewed commit、`source_tree` 等于该 commit 的 tree，且 `source_dirty: false`。
+- `npm pack --dry-run` 中 package/version/files/bin/repository/homepage/bugs 与 `package.json` 一致。
 - `dist/RELEASE_MANIFEST.md` 已人工检查。
 - tarball 文件列表已人工检查。
+- npm 认证已通过 `npm whoami` 验证，发布命令从 clean reviewed commit 的仓库目录执行，而不是直接发布 `dist/*.tgz`。
 - README、INIT、CONTRIBUTING、SECURITY、CODE_OF_CONDUCT、LICENSE、NOTICE 已检查。
 - 示例数据均为合成数据，不能追溯到真实客户、员工、项目、事故或生产系统。
 - 工具 adapter 只指向 workflow core，不削弱硬闸门。
@@ -55,3 +58,15 @@ node bin/check-sanitized.cjs --extra-banned /path/to/private-denylist.txt
 - issue / PR 接收方式；
 - 私有安全报告渠道；
 - 是否允许提交 `dist/` 产物。
+
+## v0.1.0 远程真相源
+
+只有下列验证全部通过，才能宣布正式发布：
+
+- `npm view openone-workflow-kit@latest version` 返回 `0.1.0`。
+- `npm view openone-workflow-kit@0.1.0 gitHead` 等于 `RELEASE_MANIFEST.md` 的 `source_commit`。
+- `npm view openone-workflow-kit@0.1.0 dist.shasum` 等于本地已验证 tarball 的 SHA-1。
+- GitHub Actions 默认分支最新 `Check` workflow 全部成功。
+- `refs/tags/v0.1.0` 指向已验证的发布 commit，且没有移动历史 Tag。
+- GitHub Release `v0.1.0` 为 non-draft、non-prerelease，正文使用 `docs/releases/v0.1.0.md`，并包含已验证的 tgz 与 `RELEASE_MANIFEST.md` 两个资产。
+- 在一个新临时目录中从 npm 安装并生成 `workflow/team-profile.yaml`、`workflow/core/` 与 `AGENTS.md`。

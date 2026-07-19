@@ -1,23 +1,59 @@
 # OpenOne Workflow Kit
 
-一个面向个人开发者的 agent 工作流 kit。核心理念：**编程工作的胜负在于谁能一次性把"什么叫完成"定义清楚**——把需求编译成 agent 无法糊弄的《完成合同》，宣布完成 = blocking 验收 Oracle 全部 PASS 的机器判定，而不是"感觉做完了"。
+[![CI](https://img.shields.io/github/actions/workflow/status/bluecoast1379/openone-workflow-kit/check.yml?branch=main&label=CI)](https://github.com/bluecoast1379/openone-workflow-kit/actions/workflows/check.yml)
+[![npm](https://img.shields.io/npm/v/openone-workflow-kit?label=npm)](https://www.npmjs.com/package/openone-workflow-kit)
+[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-339933)](./package.json)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](./LICENSE)
 
-它包含两条共享闸门口径的轨道：
+![OpenOne Workflow Kit：独立开发者的研发与商业化双轨工作流](./docs/assets/hero.svg)
 
-- 研发轨：把个人产品从构思、澄清、完成合同冻结推进到实现、审查、测试、发布和复盘；支持 `/交付至完成` 在合同范围内自主循环到全绿。
-- 商业化轨：把同一个产品从业务定位、商业模式、PMF 验证、客户画像、购买旅程，推进到渠道漏斗映射、营销策略、预算、渠道执行和周期性策略复盘。
+面向独立开发者的工具无关 agent 工作流：把产品研发和商业化放进同一个可验证闭环。核心不是更长的 prompt，而是把“什么叫完成”编译成可冻结的《完成合同》：**blocking 验收 Oracle 全部 PASS，才能宣布完成。**
 
-核心机制见 [定义完成指南](./docs/definition-of-done.md)，双轨如何衔接见 [双轨工作流设计](./docs/dual-track-workflow.md)。
+- **研发轨**：需求 → 完成合同 → 实现/审查/测试 → 发布 → 复盘。
+- **商业化轨**：定位 → 商业模式/PMF/ICP → 渠道/预算 → 策略复盘。
+- **本地优先**：只读本地上下文并生成工作流文件；不上传资料，不自动 push、发布、部署或写生产数据。
 
-- `workflow/core`: 工具无关的流程、阶段、闸门、模板和检查能力。
-- `workflow/team-profile.yaml`: 目标个人项目或个人工作区的机器可读配置，由初始化器根据本地资料生成。
-- `workflow/adapters`: 各智能体工具的薄入口，只调用当前工具自己的能力。
+## 如何选择
 
-核心原则：同一套 workflow core，多工具 adapter 分层增强；不承诺所有工具体验完全一致。
+| 项目 | 服务对象 | 选它的理由 |
+| --- | --- | --- |
+| [open-workflow-kit](https://github.com/bluecoast1379/open-workflow-kit) | AI Coding 团队 | 需要完成合同、证据账本和跨工具交付治理 |
+| [business-agent](https://github.com/bluecoast1379/business-agent) | 企业业务 Agent | 需要从业务规划、网关脚手架到评测与运行边界 |
+| **openone-workflow-kit（本项目）** | **独立开发者** | **需要个人研发 + 商业化双轨，同时控制流程税** |
+
+## 30 秒 Quick Demo
+
+前置条件：Node.js 18+；首次下载时间不计入 30 秒。在一个空目录中执行：
+
+```bash
+mkdir openone-demo && cd openone-demo
+npx --yes --package openone-workflow-kit@0.1.0 openone-workflow-init --target . --tools codex,cursor --yes
+node -e "for (const f of ['workflow/team-profile.yaml','AGENTS.md']) require('node:fs').accessSync(f); console.log('OpenOne ready')"
+```
+
+预期结果：终端输出 `OpenOne ready`，并生成 `workflow/team-profile.yaml`、`workflow/core/`、`AGENTS.md` 与所选工具 adapter。如果 npm 网络不可用，参考 [Git 或本地 tarball 安装](./docs/shareable-install.md)。
+
+![OpenOne Workflow Kit 30 秒体验：创建目录、运行 v0.1.0、验证产物](./docs/assets/quick-demo.svg)
+
+## 架构：一套 Core，两条轨道
+
+![OpenOne Workflow Kit 双轨架构：上下文、定义、执行、验证与复盘共享治理闸门](./docs/assets/architecture.svg)
+
+1. `workflow/team-profile.yaml` 记录本地事实与路径；`specs/` 记录已发布行为真相。
+2. `workflow/core/` 提供工具无关的阶段、完成合同、闸门、模板和 Oracle 能力。
+3. `workflow/adapters/` 为 Claude、Codex、Cursor、Copilot、CodeBuddy、Kiro 和 Trae 生成薄入口；共享 core，但不承诺工具体验完全相同。
+
+深入阅读：[定义完成指南](./docs/definition-of-done.md) · [双轨工作流设计](./docs/dual-track-workflow.md) · [v0.1.0 Release Notes](./docs/releases/v0.1.0.md)
 
 ## 一键初始化
 
-在个人项目根目录运行：
+从 npm 的不可变版本运行（Node.js 18+）：
+
+```bash
+npx --yes --package openone-workflow-kit@0.1.0 openone-workflow-init --target . --tools codex,claude,cursor --yes
+```
+
+从源码 checkout 本地运行：
 
 ```bash
 node /path/to/openone-workflow-kit/bin/init-workspace.cjs --target .
@@ -29,7 +65,7 @@ node /path/to/openone-workflow-kit/bin/init-workspace.cjs --target .
 /path/to/openone-workflow-kit/install.sh . --tools codex,claude,cursor
 ```
 
-如果你拿到的是 Git 地址或 npm 包地址，见 [可分享安装方式](./docs/shareable-install.md)。
+如果你拿到的是 Git 地址或本地 tarball，见 [可分享安装方式](./docs/shareable-install.md)。该文档也说明了如何先验证 Registry 中的 `0.1.0` 再安装，避免把尚未发布的版本当作可用事实。
 
 常用参数：
 
@@ -38,7 +74,7 @@ node /path/to/openone-workflow-kit/bin/init-workspace.cjs --target .
 node /path/to/openone-workflow-kit/bin/init-workspace.cjs --target . --tools codex,claude,cursor
 
 # GitHub 包安装方式
-npx --yes --package "git+https://github.com/bluecoast1379/openone-workflow-kit.git" openone-workflow-init --target . --tools codex,claude,cursor
+npx --yes --package "git+https://github.com/bluecoast1379/openone-workflow-kit.git#v0.1.0" openone-workflow-init --target . --tools codex,claude,cursor
 
 # 工具名支持 trea 别名，会自动归一为 trae
 node /path/to/openone-workflow-kit/bin/init-workspace.cjs --target . --tools codex,trea,codebuddy

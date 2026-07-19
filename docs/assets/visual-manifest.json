@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "project": "openone-workflow-kit",
+  "designSystem": {
+    "background": ["#070B14", "#0B1220"],
+    "foreground": ["#F8FAFC", "#A7B0C0"],
+    "accent": ["#F59E0B", "#FB7185"],
+    "fontStack": "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+  },
+  "assets": [
+    {
+      "file": "hero.svg",
+      "width": 1440,
+      "height": 720,
+      "purpose": "README hero",
+      "sha256": "e1b0683be279dec52fd3832bb8b6f7847c090e9140f6ee82e52d4ad7027cce0f"
+    },
+    {
+      "file": "architecture.svg",
+      "width": 1440,
+      "height": 900,
+      "purpose": "Dual-track architecture",
+      "sha256": "c2c614ca0002dc91c586d377484af04610f7641e0ded7d6b04c7c9ba8ff447c9"
+    },
+    {
+      "file": "quick-demo.svg",
+      "width": 1440,
+      "height": 720,
+      "purpose": "Three-step quick demo",
+      "sha256": "cc18d2857e6ebdd91140f4232adfeeea31917aef5b0958ed267a34b5e20556ff"
+    },
+    {
+      "file": "social-preview.svg",
+      "width": 1280,
+      "height": 640,
+      "purpose": "Source for the GitHub social preview export",
+      "sha256": "f91461e2824024e1619a4c06e826ff06dc21b8f73439e195ffc4865f75f1d677"
+    }
+  ],
+  "exports": [
+    {
+      "filename": "social-preview.png",
+      "format": "png",
+      "width": 1280,
+      "height": 640,
+      "source": "social-preview.svg",
+      "purpose": "GitHub repository social preview upload",
+      "tracked": false,
+      "sha256": "0d484fa2fa1acd2f1e30e19ae3af58f889da799700325bb40ecd050edbed299d"
+    }
+  ]
+}
