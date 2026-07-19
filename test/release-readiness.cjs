@@ -98,6 +98,15 @@ for (const asset of manifest.assets || []) {
 
 const sourceCheckout = fs.existsSync(path.join(root, '.git'));
 if (sourceCheckout) {
+  const attributesFile = path.join(root, '.gitattributes');
+  expect(fs.existsSync(attributesFile), 'source checkout must pin release-evidence line endings');
+  if (fs.existsSync(attributesFile)) {
+    const attributes = fs.readFileSync(attributesFile, 'utf8');
+    expect(
+      /^\*\.svg\s+text\s+eol=lf$/m.test(attributes),
+      'source checkout must keep SVG checksum evidence on LF line endings'
+    );
+  }
   const workflowFile = path.join(root, '.github', 'workflows', 'check.yml');
   expect(fs.existsSync(workflowFile), 'source checkout must include .github/workflows/check.yml');
   if (fs.existsSync(workflowFile)) {

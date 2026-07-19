@@ -1,0 +1,2 @@
+# Visual checksums are release evidence, so SVG bytes must not change by OS.
+*.svg text eol=lf
