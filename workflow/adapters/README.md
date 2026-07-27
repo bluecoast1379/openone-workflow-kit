@@ -5,8 +5,10 @@ Adapters 是从同一套 workflow core 和 `team-profile.yaml` 生成的工具�
 它们的职责：
 
 - 帮当前工具找到 `AGENTS.md`、`workflow/core/` 和 `workflow/team-profile.yaml`。
-- 按当前工具能力暴露 slash commands、prompts、rules 或 instructions。
+- 按当前工具能力暴露 Skills、slash commands、prompts、rules 或 instructions。
 - 保持工具入口轻量，不复制或改写 core 规则。
+
+Codex 的项目级入口使用 `.agents/skills/`：总入口负责双轨路由，每个 manifest 阶段各有一个显式 Skill。项目级 `.codex/prompts/` 不受支持，也不再生成。
 
 它们不能：
 

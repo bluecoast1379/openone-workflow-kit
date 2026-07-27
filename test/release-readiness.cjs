@@ -15,10 +15,11 @@ const pkg = readJson('package.json');
 const failures = [];
 
 expect(pkg.name === 'openone-workflow-kit', 'package name must be openone-workflow-kit');
-expect(pkg.version === '0.1.0', 'package version must be 0.1.0');
+expect(pkg.version === '1.0.0', 'package version must be 1.0.0');
 expect(pkg.private === false, 'package must be publishable');
 expect(pkg.license === 'Apache-2.0', 'package license must be Apache-2.0');
 expect(pkg.engines && pkg.engines.node === '>=18', 'Node.js support must start at 18');
+expect(!pkg.dependencies || Object.keys(pkg.dependencies).length === 0, 'package must add zero runtime dependencies');
 expect(pkg.publishConfig && pkg.publishConfig.access === 'public', 'npm access must be public');
 expect(
   pkg.repository && pkg.repository.url === 'git+https://github.com/bluecoast1379/openone-workflow-kit.git',
@@ -63,7 +64,8 @@ for (const marker of [
   './docs/assets/quick-demo.svg',
   './docs/assets/architecture.svg',
   '## 30 秒 Quick Demo',
-  'openone-workflow-kit@0.1.0',
+  'openone-workflow-kit@1.0.0',
+  '.agents/skills/',
   'open-workflow-kit',
   'business-agent'
 ]) {
@@ -127,13 +129,15 @@ if (sourceCheckout) {
   }
 }
 
-expect(fs.existsSync(path.join(root, 'docs', 'releases', 'v0.1.0.md')), 'v0.1.0 release notes must exist');
+expect(fs.existsSync(path.join(root, 'docs', 'releases', 'v0.1.0.md')), 'v0.1.0 release notes must remain available');
+expect(fs.existsSync(path.join(root, 'docs', 'releases', 'v1.0.0.md')), 'v1.0.0 release notes must exist');
+expect(fs.existsSync(path.join(root, 'workflow', 'core', 'command-manifest.yaml')), 'command manifest must be packaged');
 const manualPublish = fs.readFileSync(path.join(root, 'docs', 'manual-publish.md'), 'utf8');
 for (const marker of [
   'npm publish --access public',
-  'npm view openone-workflow-kit@0.1.0 gitHead',
-  'npm view openone-workflow-kit@0.1.0 dist.shasum',
-  'dist/openone-workflow-kit-0.1.0.tgz',
+  'npm view openone-workflow-kit@1.0.0 gitHead',
+  'npm view openone-workflow-kit@1.0.0 dist.shasum',
+  'dist/openone-workflow-kit-1.0.0.tgz',
   'dist/RELEASE_MANIFEST.md'
 ]) {
   expect(manualPublish.includes(marker), `manual publish guide must include ${marker}`);

@@ -27,13 +27,13 @@
 
 ```bash
 mkdir openone-demo && cd openone-demo
-npx --yes --package openone-workflow-kit@0.1.0 openone-workflow-init --target . --tools codex,cursor --yes
+npx --yes --package openone-workflow-kit@1.0.0 openone-workflow-init --target . --tools codex,cursor --yes
 node -e "for (const f of ['workflow/team-profile.yaml','AGENTS.md']) require('node:fs').accessSync(f); console.log('OpenOne ready')"
 ```
 
 预期结果：终端输出 `OpenOne ready`，并生成 `workflow/team-profile.yaml`、`workflow/core/`、`AGENTS.md` 与所选工具 adapter。如果 npm 网络不可用，参考 [Git 或本地 tarball 安装](./docs/shareable-install.md)。
 
-![OpenOne Workflow Kit 30 秒体验：创建目录、运行 v0.1.0、验证产物](./docs/assets/quick-demo.svg)
+![OpenOne Workflow Kit 30 秒体验：创建目录、运行 v1.0.0、验证产物](./docs/assets/quick-demo.svg)
 
 ## 架构：一套 Core，两条轨道
 
@@ -43,14 +43,14 @@ node -e "for (const f of ['workflow/team-profile.yaml','AGENTS.md']) require('no
 2. `workflow/core/` 提供工具无关的阶段、完成合同、闸门、模板和 Oracle 能力。
 3. `workflow/adapters/` 为 Claude、Codex、Cursor、Copilot、CodeBuddy、Kiro 和 Trae 生成薄入口；共享 core，但不承诺工具体验完全相同。
 
-深入阅读：[定义完成指南](./docs/definition-of-done.md) · [双轨工作流设计](./docs/dual-track-workflow.md) · [v0.1.0 Release Notes](./docs/releases/v0.1.0.md)
+深入阅读：[定义完成指南](./docs/definition-of-done.md) · [双轨工作流设计](./docs/dual-track-workflow.md) · [v1.0.0 Release Notes](./docs/releases/v1.0.0.md)
 
 ## 一键初始化
 
 从 npm 的不可变版本运行（Node.js 18+）：
 
 ```bash
-npx --yes --package openone-workflow-kit@0.1.0 openone-workflow-init --target . --tools codex,claude,cursor --yes
+npx --yes --package openone-workflow-kit@1.0.0 openone-workflow-init --target . --tools codex,claude,cursor --yes
 ```
 
 从源码 checkout 本地运行：
@@ -65,7 +65,7 @@ node /path/to/openone-workflow-kit/bin/init-workspace.cjs --target .
 /path/to/openone-workflow-kit/install.sh . --tools codex,claude,cursor
 ```
 
-如果你拿到的是 Git 地址或本地 tarball，见 [可分享安装方式](./docs/shareable-install.md)。该文档也说明了如何先验证 Registry 中的 `0.1.0` 再安装，避免把尚未发布的版本当作可用事实。
+如果你拿到的是 Git 地址或本地 tarball，见 [可分享安装方式](./docs/shareable-install.md)。该文档也说明了如何先验证 Registry 中的 `1.0.0` 再安装，避免把尚未发布的版本当作可用事实。
 
 常用参数：
 
@@ -74,7 +74,7 @@ node /path/to/openone-workflow-kit/bin/init-workspace.cjs --target .
 node /path/to/openone-workflow-kit/bin/init-workspace.cjs --target . --tools codex,claude,cursor
 
 # GitHub 包安装方式
-npx --yes --package "git+https://github.com/bluecoast1379/openone-workflow-kit.git#v0.1.0" openone-workflow-init --target . --tools codex,claude,cursor
+npx --yes --package "git+https://github.com/bluecoast1379/openone-workflow-kit.git#v1.0.0" openone-workflow-init --target . --tools codex,claude,cursor
 
 # 工具名支持 trea 别名，会自动归一为 trae
 node /path/to/openone-workflow-kit/bin/init-workspace.cjs --target . --tools codex,trea,codebuddy
@@ -94,12 +94,25 @@ node /path/to/openone-workflow-kit/bin/init-workspace.cjs --target . --dry-run
    - 交互式终端：逐项提问。
    - 非交互模式：生成 `workflow/INITIALIZATION_QUESTIONS.md`。
 4. 生成跨工具入口：
-   - Codex: `AGENTS.md`、`.codex/prompts/`
+   - Codex: `AGENTS.md`、`.agents/skills/agent-workflow/` 与 32 个 `.agents/skills/<skill-slug>/`
    - Claude Code: `CLAUDE.md`、`.claude/commands/`
    - Cursor: `.cursor/rules/` 和 `.cursor/commands/`
    - Copilot: `.github/copilot-instructions.md`
    - CodeBuddy / Kiro / Trae: 各自 `instructions.md`
 5. 初始化器本身不执行远程 Git、push、构建部署或数据库写入。生成后的个人工作流允许 agent 在范围明确且工作树干净时执行本地分支命名、创建、commit、tag 和本地 merge；远程 push、release、部署和生产配置写入需要用户明确授权。
+
+### Codex 调用方式与 0.1.0 迁移
+
+Codex Desktop 输入 `/01`、`/B1` 等关键词后，从 `/` 面板的 Skills 分组选择中文阶段；CLI/IDE 使用 `/skills` 或 `$workflow-...`。这是 Skill 选择，不是 Claude 式字面项目命令 `/01-需求讨论`。
+
+从 0.1.0 升级时执行：
+
+```bash
+npx --yes --package openone-workflow-kit@1.0.0 openone-workflow-init \
+  --target . --tools codex --upgrade --force --yes
+```
+
+升级会用精确的 0.1.0 模板指纹识别旧 `.codex/prompts/` 根层文件：只删除未改动的 kit 生成文件，保留子目录、用户自定义或编辑过的文件，并生成当前 Codex 可发现的 `.agents/skills/`。已有 `team-profile.yaml`、工作区宪法和个人规范不会被 `--force` 覆盖；同名用户 Skill 会保留原文件并输出 `.agent-workflow-new` 合并副本。可先追加 `--dry-run` 查看迁移计划。
 
 ## 隐私与脱敏边界
 

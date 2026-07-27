@@ -6,6 +6,8 @@ const { spawnSync } = require('child_process');
 
 const root = path.resolve(__dirname, '..');
 const init = path.join(root, 'bin', 'init-workspace.cjs');
+const { loadCommandManifest } = require(path.join(root, 'bin/command-manifest.cjs'));
+const commands = loadCommandManifest(path.join(root, 'workflow/core/command-manifest.yaml')).commands;
 const { toPortablePath } = require(init);
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-workflow-smoke-'));
 
@@ -38,9 +40,26 @@ function run(args, options = {}) {
   return result;
 }
 
+function runAt(target, args, options = {}) {
+  const result = spawnSync(process.execPath, [init, ...args], {
+    cwd: target,
+    encoding: 'utf8',
+    ...options
+  });
+  if (result.status !== 0) {
+    throw new Error(`命令执行失败: ${result.stderr || result.stdout}`);
+  }
+  return result;
+}
+
 function assertFile(rel) {
   const file = path.join(tmp, rel);
   if (!fs.existsSync(file)) throw new Error(`missing file: ${rel}`);
+}
+
+function assertNotExists(rel) {
+  const file = path.join(tmp, rel);
+  if (fs.existsSync(file)) throw new Error(`unexpected file: ${rel}`);
 }
 
 function assertContains(rel, text) {
@@ -66,12 +85,13 @@ run([
 for (const rel of [
   'AGENTS.md',
   'CLAUDE.md',
-  '.codex/prompts/init-workspace.md',
-  '.codex/prompts/04-代码实现.md',
-  '.codex/prompts/05-代码审查.md',
-  '.codex/prompts/10-复盘总结.md',
-  '.codex/prompts/new-product.md',
-  '.codex/prompts/B1-业务定位.md',
+  '.agents/skills/agent-workflow/SKILL.md',
+  '.agents/skills/workflow-init-workspace/SKILL.md',
+  '.agents/skills/workflow-04-code-implementation/SKILL.md',
+  '.agents/skills/workflow-04-code-implementation/agents/openai.yaml',
+  '.agents/skills/workflow-new-product/SKILL.md',
+  '.agents/skills/workflow-b1-positioning/SKILL.md',
+  '.agents/skills/workflow-b9-strategy-review/SKILL.md',
   '.claude/commands/04-代码实现.md',
   '.claude/commands/B1-业务定位.md',
   '.claude/commands/B9-策略复盘.md',
@@ -81,6 +101,7 @@ for (const rel of [
   '.kiro/instructions.md',
   '.trae/instructions.md',
   'workflow/team-profile.yaml',
+  'workflow/core/command-manifest.yaml',
   'workflow/INITIALIZATION_QUESTIONS.md',
   'workflow/core/commands/init-workspace.md',
   'workflow/core/commands/04-代码实现.md',
@@ -118,6 +139,39 @@ for (const rel of [
 ]) {
   assertFile(rel);
 }
+
+assertNotExists('.codex/prompts');
+assertContains('.agents/skills/agent-workflow/SKILL.md', 'name: agent-workflow');
+assertContains('.agents/skills/agent-workflow/SKILL.md', '研发与商业化双轨');
+assertContains('.agents/skills/agent-workflow/SKILL.md', '不授权代码实现、远程发布、营销投放');
+
+const stageSkillDirectories = fs.readdirSync(path.join(tmp, '.agents/skills'), { withFileTypes: true })
+  .filter((entry) => entry.isDirectory() && entry.name !== 'agent-workflow');
+if (stageSkillDirectories.length !== commands.length) {
+  throw new Error(`expected ${commands.length} stage Skill directories, found ${stageSkillDirectories.length}`);
+}
+
+for (const command of commands) {
+  const base = `.agents/skills/${command.skill_slug}`;
+  const skill = `${base}/SKILL.md`;
+  const metadata = `${base}/agents/openai.yaml`;
+  assertFile(skill);
+  assertFile(metadata);
+  assertContains(skill, `name: ${command.skill_slug}`);
+  assertContains(skill, `workflow/core/commands/${command.id}.md`);
+  assertContains(skill, command.description);
+  assertContains(skill, command.argument_hint);
+  assertContains(metadata, `display_name: \"${command.id} ${command.title}\"`);
+  assertContains(metadata, `执行 /${command.id} 阶段`);
+  assertContains(metadata, 'allow_implicit_invocation: false');
+}
+
+for (const id of ['new-product', 'B1-业务定位', 'B1-B8-商业化准备', 'B9-策略复盘']) {
+  const command = commands.find((item) => item.id === id);
+  assertContains(`.agents/skills/${command.skill_slug}/SKILL.md`, 'business/<product>/');
+}
+const statusCommand = commands.find((item) => item.id === 'workflow-status');
+assertContains(`.agents/skills/${statusCommand.skill_slug}/SKILL.md`, '`features/` 与 `business/`');
 
 assertContains('workflow/team-profile.yaml', '- trae');
 assertContains('workflow/team-profile.yaml', 'apps/web');
@@ -236,16 +290,197 @@ for (const stale of fs.readdirSync(path.join(tmp, 'workflow'))) {
 }
 const profileBefore = fs.readFileSync(path.join(tmp, 'workflow/team-profile.yaml'), 'utf8');
 fs.writeFileSync(path.join(tmp, 'workflow/team-profile.yaml'), profileBefore + '\n# user note\n');
+const constitutionFile = path.join(tmp, 'workflow/constitution.md');
+const constitutionBefore = fs.readFileSync(constitutionFile, 'utf8');
+fs.writeFileSync(constitutionFile, constitutionBefore + '\n# user constitution note\n');
 run(['--target', tmp, '--tools', 'codex,claude,cursor', '--upgrade', '--force', '--yes']);
 const profileAfter = fs.readFileSync(path.join(tmp, 'workflow/team-profile.yaml'), 'utf8');
-if (profileAfter.includes('# user note')) {
-  throw new Error('upgrade --force did not overwrite team-profile.yaml');
+if (!profileAfter.includes('# user note')) {
+  throw new Error('upgrade --force overwrote user facts in team-profile.yaml');
+}
+if (!fs.readFileSync(constitutionFile, 'utf8').includes('# user constitution note')) {
+  throw new Error('upgrade --force overwrote user principles in constitution.md');
 }
 const upgradeStrayFiles = fs
   .readdirSync(path.join(tmp, 'workflow'))
   .filter((name) => name.endsWith('.agent-workflow-new'));
 if (upgradeStrayFiles.length) {
   throw new Error(`upgrade --force should not produce new .agent-workflow-new files, found: ${upgradeStrayFiles.join(',')}`);
+}
+
+// Codex 0.1.0 migration: exact generated prompts are removed, while custom,
+// edited and symlinked content is preserved. Dry-run must remain side-effect free.
+const migrationTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'openone-codex-migration-'));
+const promptsRoot = path.join(migrationTmp, '.codex/prompts');
+fs.mkdirSync(promptsRoot, { recursive: true });
+for (const [index, command] of commands.entries()) {
+  let content = historicalCodexPrompt(command.id);
+  if (index === 0) content = content.replace(/\n/g, '\r\n');
+  fs.writeFileSync(path.join(promptsRoot, `${command.id}.md`), content);
+}
+fs.writeFileSync(path.join(promptsRoot, 'my-custom-prompt.md'), '# 用户自定义 prompt\n');
+const nestedLegacyCopy = path.join(promptsRoot, 'archive/01-需求讨论.md');
+fs.mkdirSync(path.dirname(nestedLegacyCopy), { recursive: true });
+fs.writeFileSync(nestedLegacyCopy, historicalCodexPrompt('01-需求讨论'));
+const orphanManaged = path.join(migrationTmp, '.agents/skills/workflow-removed-stage/SKILL.md');
+fs.mkdirSync(path.dirname(orphanManaged), { recursive: true });
+fs.writeFileSync(orphanManaged, '<!-- generated-by: openone-workflow-kit; managed-adapter: true -->\n# removed\n');
+const customSkill = path.join(migrationTmp, '.agents/skills/my-custom-skill/SKILL.md');
+fs.mkdirSync(path.dirname(customSkill), { recursive: true });
+fs.writeFileSync(customSkill, '---\nname: my-custom-skill\ndescription: user owned\n---\n');
+
+const dryRun = runAt(migrationTmp, [
+  '--target', migrationTmp, '--tools', 'codex', '--upgrade', '--force', '--dry-run'
+]);
+if (!dryRun.stdout.includes('将删除 .codex/prompts/01-需求讨论.md')) {
+  throw new Error('upgrade dry-run did not report a generated legacy prompt');
+}
+for (const command of commands) {
+  if (!fs.existsSync(path.join(promptsRoot, `${command.id}.md`))) {
+    throw new Error(`upgrade dry-run deleted ${command.id}.md`);
+  }
+}
+
+runAt(migrationTmp, [
+  '--target', migrationTmp, '--tools', 'codex', '--upgrade', '--force', '--yes'
+]);
+for (const command of commands) {
+  if (fs.existsSync(path.join(promptsRoot, `${command.id}.md`))) {
+    throw new Error(`upgrade did not remove generated prompt ${command.id}.md`);
+  }
+}
+if (!fs.existsSync(path.join(promptsRoot, 'my-custom-prompt.md'))) {
+  throw new Error('upgrade removed a user custom prompt');
+}
+if (!fs.existsSync(nestedLegacyCopy)) {
+  throw new Error('upgrade removed a nested user backup with a historical fingerprint');
+}
+if (fs.existsSync(orphanManaged)) throw new Error('upgrade did not remove an orphan managed Skill');
+if (!fs.existsSync(customSkill)) throw new Error('upgrade removed a user custom Skill');
+
+const customCollisionTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'openone-custom-skill-collision-'));
+const collidingSkill = path.join(customCollisionTmp, '.agents/skills/workflow-init-workspace/SKILL.md');
+fs.mkdirSync(path.dirname(collidingSkill), { recursive: true });
+fs.writeFileSync(collidingSkill, '---\nname: workflow-init-workspace\ndescription: user owned\n---\n');
+runAt(customCollisionTmp, [
+  '--target', customCollisionTmp, '--tools', 'codex', '--upgrade', '--force', '--yes'
+]);
+if (!fs.readFileSync(collidingSkill, 'utf8').includes('description: user owned')) {
+  throw new Error('upgrade overwrote a same-name user-owned Skill');
+}
+const collidingSkillSidecar = `${collidingSkill}.agent-workflow-new`;
+if (!fs.readFileSync(collidingSkillSidecar, 'utf8').includes('managed-adapter: true')) {
+  throw new Error('upgrade did not write a merge sidecar for a same-name user-owned Skill');
+}
+const collidingMetadata = path.join(customCollisionTmp, '.agents/skills/workflow-init-workspace/agents/openai.yaml');
+if (fs.existsSync(collidingMetadata)) {
+  throw new Error('upgrade mixed generated metadata into a user-owned Skill directory');
+}
+if (!fs.existsSync(`${collidingMetadata}.agent-workflow-new`)) {
+  throw new Error('upgrade did not sidecar generated metadata for a user-owned Skill directory');
+}
+
+const sidecarCollisionTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'openone-sidecar-collision-'));
+fs.writeFileSync(path.join(sidecarCollisionTmp, 'AGENTS.md'), '# user entry\n');
+fs.writeFileSync(path.join(sidecarCollisionTmp, 'AGENTS.md.agent-workflow-new'), '# merge in progress\n');
+const sidecarCollision = spawnSync(process.execPath, [
+  init, '--target', sidecarCollisionTmp, '--tools', 'codex', '--yes'
+], { cwd: sidecarCollisionTmp, encoding: 'utf8' });
+if (sidecarCollision.status === 0 ||
+    !`${sidecarCollision.stdout}\n${sidecarCollision.stderr}`.includes('managed merge sidecar')) {
+  throw new Error('initializer overwrote or ignored an occupied regular merge sidecar');
+}
+if (fs.existsSync(path.join(sidecarCollisionTmp, 'workflow'))) {
+  throw new Error('write-plan preflight left partial workflow files before a sidecar collision');
+}
+
+const editedTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'openone-codex-edited-'));
+const editedPrompt = path.join(editedTmp, '.codex/prompts/01-需求讨论.md');
+fs.mkdirSync(path.dirname(editedPrompt), { recursive: true });
+fs.writeFileSync(editedPrompt, `${historicalCodexPrompt('01-需求讨论')}\n# 用户追加规则\n`);
+runAt(editedTmp, ['--target', editedTmp, '--tools', 'codex', '--upgrade', '--force', '--yes']);
+if (!fs.existsSync(editedPrompt)) throw new Error('upgrade removed an edited historical prompt');
+
+const cleanMigrationTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'openone-codex-clean-migration-'));
+for (const command of commands) {
+  const file = path.join(cleanMigrationTmp, `.codex/prompts/${command.id}.md`);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, historicalCodexPrompt(command.id));
+}
+runAt(cleanMigrationTmp, [
+  '--target', cleanMigrationTmp, '--tools', 'codex', '--upgrade', '--force', '--yes'
+]);
+if (fs.existsSync(path.join(cleanMigrationTmp, '.codex'))) {
+  throw new Error('upgrade should remove the empty legacy .codex directory');
+}
+runAt(cleanMigrationTmp, [
+  '--target', cleanMigrationTmp, '--tools', 'codex', '--upgrade', '--force', '--yes'
+]);
+if (fs.existsSync(path.join(cleanMigrationTmp, '.codex'))) {
+  throw new Error('a repeated upgrade recreated the legacy .codex directory');
+}
+
+if (process.platform !== 'win32') {
+  const symlinkTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'openone-codex-symlink-'));
+  const externalPrompts = fs.mkdtempSync(path.join(os.tmpdir(), 'openone-external-prompts-'));
+  const externalFile = path.join(externalPrompts, '01-需求讨论.md');
+  fs.writeFileSync(externalFile, historicalCodexPrompt('01-需求讨论'));
+  fs.mkdirSync(path.join(symlinkTmp, '.codex'), { recursive: true });
+  fs.symlinkSync(externalPrompts, path.join(symlinkTmp, '.codex/prompts'), 'dir');
+  runAt(symlinkTmp, ['--target', symlinkTmp, '--tools', 'codex', '--upgrade', '--force', '--yes']);
+  if (!fs.existsSync(externalFile)) throw new Error('upgrade followed a legacy prompts symlink');
+
+  const parentSymlinkTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'openone-codex-parent-symlink-'));
+  const externalCodex = fs.mkdtempSync(path.join(os.tmpdir(), 'openone-external-codex-'));
+  const externalParentFile = path.join(externalCodex, 'prompts/01-需求讨论.md');
+  fs.mkdirSync(path.dirname(externalParentFile), { recursive: true });
+  fs.writeFileSync(externalParentFile, historicalCodexPrompt('01-需求讨论'));
+  fs.symlinkSync(externalCodex, path.join(parentSymlinkTmp, '.codex'), 'dir');
+  runAt(parentSymlinkTmp, [
+    '--target', parentSymlinkTmp, '--tools', 'codex', '--upgrade', '--force', '--yes'
+  ]);
+  if (!fs.existsSync(externalParentFile)) {
+    throw new Error('upgrade followed a parent symlink above legacy prompts');
+  }
+
+  const writeSymlinkTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'openone-skill-write-symlink-'));
+  const externalSkillDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openone-external-skill-'));
+  fs.mkdirSync(path.join(writeSymlinkTmp, '.agents/skills'), { recursive: true });
+  fs.symlinkSync(
+    externalSkillDir,
+    path.join(writeSymlinkTmp, '.agents/skills/workflow-init-workspace'),
+    'dir'
+  );
+  const unsafeWrite = spawnSync(process.execPath, [
+    init, '--target', writeSymlinkTmp, '--tools', 'codex', '--force', '--yes'
+  ], { cwd: writeSymlinkTmp, encoding: 'utf8' });
+  if (unsafeWrite.status === 0 || !`${unsafeWrite.stdout}\n${unsafeWrite.stderr}`.includes('symbolic link')) {
+    throw new Error('initializer did not reject a managed Skill path symlink');
+  }
+  if (fs.readdirSync(externalSkillDir).length !== 0) {
+    throw new Error('initializer wrote through a managed Skill path symlink');
+  }
+  if (fs.existsSync(path.join(writeSymlinkTmp, 'workflow'))) {
+    throw new Error('write-plan preflight left partial workflow files before a Skill symlink failure');
+  }
+
+  const alternateTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'openone-alternate-symlink-'));
+  const alternateExternal = path.join(os.tmpdir(), `openone-alternate-external-${process.pid}.txt`);
+  fs.writeFileSync(path.join(alternateTmp, 'AGENTS.md'), '# 用户现有说明\n');
+  fs.writeFileSync(alternateExternal, 'must remain unchanged\n');
+  fs.symlinkSync(alternateExternal, path.join(alternateTmp, 'AGENTS.md.agent-workflow-new'));
+  const alternateWrite = spawnSync(process.execPath, [
+    init, '--target', alternateTmp, '--tools', 'codex', '--yes'
+  ], { cwd: alternateTmp, encoding: 'utf8' });
+  if (alternateWrite.status === 0 || !`${alternateWrite.stdout}\n${alternateWrite.stderr}`.includes('symbolic link')) {
+    throw new Error('initializer did not reject an alternate managed-file symlink');
+  }
+  if (fs.readFileSync(alternateExternal, 'utf8') !== 'must remain unchanged\n') {
+    throw new Error('initializer wrote through an .agent-workflow-new symlink');
+  }
+  if (fs.existsSync(path.join(alternateTmp, 'workflow'))) {
+    throw new Error('write-plan preflight left partial workflow files before a sidecar symlink failure');
+  }
 }
 
 // Cursor-only install must still generate AGENTS.md (the tool-neutral usage guide),
@@ -270,3 +505,7 @@ if (!cursorAgents.includes('### Cursor')) {
 }
 
 console.log('Smoke test passed.');
+
+function historicalCodexPrompt(id) {
+  return `# ${id}\n\n读取 \`AGENTS.md\`、\`workflow/team-profile.yaml\` 和 \`workflow/core/commands/${id}.md\`。\n\n优先使用本地证据。必要资料缺失时，更新 \`workflow/INITIALIZATION_QUESTIONS.md\` 或向用户索要缺失路径。\n`;
+}

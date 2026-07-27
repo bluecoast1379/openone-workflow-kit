@@ -6,6 +6,8 @@
 
 - `npm run check` 通过。
 - `npm run build:release` 通过。
+- `node test/codex-adapter-conformance.cjs` 验证 1 个总入口 + 32 个阶段 Skill、manifest 反例与禁止生成 `.codex/prompts`。
+- 从待发布 tarball 初始化隔离目录后，本机 Codex `skills/list` 返回 33 个 enabled repo Skill 且 errors 为 0。
 - `dist/RELEASE_MANIFEST.md` 的 `source_commit` 等于 reviewed commit、`source_tree` 等于该 commit 的 tree，且 `source_dirty: false`。
 - `npm pack --dry-run` 中 package/version/files/bin/repository/homepage/bugs 与 `package.json` 一致。
 - `dist/RELEASE_MANIFEST.md` 已人工检查。
@@ -14,6 +16,7 @@
 - README、INIT、CONTRIBUTING、SECURITY、CODE_OF_CONDUCT、LICENSE、NOTICE 已检查。
 - 示例数据均为合成数据，不能追溯到真实客户、员工、项目、事故或生产系统。
 - 工具 adapter 只指向 workflow core，不削弱硬闸门。
+- Codex 文档只承诺 Desktop `/` 的 Skills 搜索、`/skills` 与 `$<skill-slug>`；不宣称支持 Claude 式字面项目命令。
 - 初始化器不会执行远程 Git、创建分支、push、构建 / 部署触发、数据库写入或生产配置写入。
 
 ## 私有 denylist 扫描
@@ -59,14 +62,15 @@ node bin/check-sanitized.cjs --extra-banned /path/to/private-denylist.txt
 - 私有安全报告渠道；
 - 是否允许提交 `dist/` 产物。
 
-## v0.1.0 远程真相源
+## v1.0.0 远程真相源
 
 只有下列验证全部通过，才能宣布正式发布：
 
-- `npm view openone-workflow-kit@latest version` 返回 `0.1.0`。
-- `npm view openone-workflow-kit@0.1.0 gitHead` 等于 `RELEASE_MANIFEST.md` 的 `source_commit`。
-- `npm view openone-workflow-kit@0.1.0 dist.shasum` 等于本地已验证 tarball 的 SHA-1。
+- `npm view openone-workflow-kit@latest version` 返回 `1.0.0`。
+- `npm view openone-workflow-kit@1.0.0 gitHead` 等于 `RELEASE_MANIFEST.md` 的 `source_commit`。
+- `npm view openone-workflow-kit@1.0.0 dist.shasum` 等于本地已验证 tarball 的 SHA-1。
 - GitHub Actions 默认分支最新 `Check` workflow 全部成功。
-- `refs/tags/v0.1.0` 指向已验证的发布 commit，且没有移动历史 Tag。
-- GitHub Release `v0.1.0` 为 non-draft、non-prerelease，正文使用 `docs/releases/v0.1.0.md`，并包含已验证的 tgz 与 `RELEASE_MANIFEST.md` 两个资产。
+- annotated tag 的 peeled ref `refs/tags/v1.0.0^{}` 等于已验证的发布 commit，且没有移动历史 Tag。
+- GitHub Release `v1.0.0` 为 non-draft、non-prerelease，正文使用 `docs/releases/v1.0.0.md`，并包含已验证的 tgz 与 `RELEASE_MANIFEST.md` 两个资产。
 - 在一个新临时目录中从 npm 安装并生成 `workflow/team-profile.yaml`、`workflow/core/` 与 `AGENTS.md`。
+- 在该临时目录中再次运行真实 Codex `skills/list`，确认发布包仍返回 33 个 repo Skill、0 个错误。
