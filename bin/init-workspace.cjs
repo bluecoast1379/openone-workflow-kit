@@ -472,7 +472,7 @@ function writeManagedFile(write, options, targetRoot) {
   // Re-evaluate after mkdir so a path change between the plan and the write is
   // caught as close as possible to the mutation.
   const action = determineManagedWriteAction(write, options, targetRoot);
-  const rel = path.relative(process.cwd(), action.file);
+  const rel = relativeForDisplay(process.cwd(), action.file);
   if (action.type === 'unchanged') {
     console.log(`unchanged ${rel}`);
     return;
@@ -485,7 +485,7 @@ function writeManagedFile(write, options, targetRoot) {
     // The action resolver guarantees this path does not exist. `wx` closes the
     // last ordinary race without overwriting an existing merge sidecar.
     fs.writeFileSync(action.file, write.content, { flag: 'wx' });
-    console.log(`exists ${path.relative(process.cwd(), write.file)} -> wrote ${rel}`);
+    console.log(`exists ${relativeForDisplay(process.cwd(), write.file)} -> wrote ${rel}`);
     return;
   }
   fs.writeFileSync(action.file, write.content);
@@ -572,16 +572,20 @@ function printDryRun(target, profile, writes, legacyPlan) {
   console.log(`已识别仓库: ${profile.repos.length}`);
   console.log(`缺失资料组: ${profile.missing.map((item) => item.key).join(', ') || '(无)'}`);
   console.log('计划写入:');
-  for (const write of writes) console.log(`- ${path.relative(target, write.file)}`);
+  for (const write of writes) console.log(`- ${relativeForDisplay(target, write.file)}`);
   if (legacyPlan && (legacyPlan.remove.length || legacyPlan.keep.length)) {
     console.log('旧版 Codex adapter 清理计划（--upgrade 时执行）:');
     for (const item of legacyPlan.remove) {
-      console.log(`- 将删除 ${path.relative(target, item.file)}（kit 指纹匹配；${item.reason}）`);
+      console.log(`- 将删除 ${relativeForDisplay(target, item.file)}（kit 指纹匹配；${item.reason}）`);
     }
     for (const item of legacyPlan.keep) {
-      console.log(`- 保留 ${path.relative(target, item.file)}（内容不匹配 kit 指纹或路径不可安全遍历）`);
+      console.log(`- 保留 ${relativeForDisplay(target, item.file)}（内容不匹配 kit 指纹或路径不可安全遍历）`);
     }
   }
+}
+
+function relativeForDisplay(base, file) {
+  return toPortablePath(path.relative(base, file));
 }
 
 function planLegacyCleanup(target, options, plannedWrites = [], enabledTools = []) {
