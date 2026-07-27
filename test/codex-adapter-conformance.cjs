@@ -28,13 +28,11 @@ if (result.status !== 0) {
 const errors = validateCodexAdapter(target, commands);
 if (errors.length) throw new Error(`Codex adapter conformance 失败:\n- ${errors.join('\n- ')}`);
 
-const removed = path.join(
-  target,
-  `.agents/skills/${commands[0].skill_slug}/agents/openai.yaml`
-);
+const removedRel = `.agents/skills/${commands[0].skill_slug}/agents/openai.yaml`;
+const removed = path.join(target, removedRel);
 fs.unlinkSync(removed);
 const negativeErrors = validateCodexAdapter(target, commands);
-if (!negativeErrors.some((message) => message.includes(path.relative(target, removed)))) {
+if (!negativeErrors.some((message) => message.includes(removedRel))) {
   throw new Error('删除一个阶段 metadata 后，conformance 未捕获缺失入口');
 }
 
