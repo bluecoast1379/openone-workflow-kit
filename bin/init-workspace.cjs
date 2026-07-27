@@ -2,8 +2,10 @@
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
+const { loadCommandManifest } = require('./command-manifest.cjs');
 
 const KIT_ROOT = path.resolve(__dirname, '..');
+const PACKAGE_VERSION = JSON.parse(fs.readFileSync(path.join(KIT_ROOT, 'package.json'), 'utf8')).version;
 const SUPPORTED_TOOLS = ['codex', 'claude', 'cursor', 'copilot', 'codebuddy', 'kiro', 'trae'];
 const TOOL_ALIASES = {
   trea: 'trae',
@@ -12,42 +14,12 @@ const TOOL_ALIASES = {
   github_copilot: 'copilot',
   'github-copilot': 'copilot'
 };
-const GENERATED_BY = 'openone-workflow-kit 0.1.0';
-
-const STAGES = [
-  ['init-workspace', '初始化工作区', '扫描本地资料、生成 team-profile、缺资料提问，并生成当前工具 adapter。'],
-  ['new-feature', '初始化功能工作流', '创建 features/{feature}/ 容器、状态文件和截图目录，并完成 S/M/L 复杂度分级。'],
-  ['01-需求讨论', '需求讨论', '澄清业务目标、边界、验收口径和待确认项。'],
-  ['澄清', '澄清', '每轮不超过 5 个针对性问题消融语义歧义，答案写回文档并清理待澄清标记。'],
-  ['02-产品文档', '产品文档', '输出 PRD、业务规则、高层 UI 方向、非功能需求和验收口径。'],
-  ['02B-UI设计', 'UI 设计', '在产品文档后输出可被实现遵循的信息架构、关键流程、页面清单、组件规范、平台适配、可访问性和 04A 交接规范。'],
-  ['03-技术架构', '技术架构', '识别项目族、影响仓库、调用链、分支基线和实现准入风险。'],
-  ['03-06-研发准备', '研发准备编排', '在已有 PRD 和必要的 02B UI 设计基线后串联生成 03 到 06 的研发准备文档；不授权代码实现。'],
-  ['04-代码实现', '代码实现总览', '在准入通过后记录后端、前端、配置、数据和发布影响的真实改动。'],
-  ['04A-前端代码实现', '前端代码实现', '记录页面、组件、接口、状态、回显和前端验证。'],
-  ['04B-后端代码实现', '后端代码实现', '记录接口、服务、数据、事务、消息、配置和后端验证。'],
-  ['05-代码审查', '代码审查', '以问题优先方式审查真实 diff、发布边界、PRD 一致性和残余风险。'],
-  ['06-测试用例', '测试用例', '以风险驱动方式输出覆盖矩阵，每条用例可绑定为完成合同的验收 Oracle。'],
-  ['定义完成', '定义完成', '把 01-06 结论编译成完成合同，通过 Definition Lint 后经用户确认冻结。'],
-  ['一致性检查', '一致性检查', '实现前对合同与各阶段文档做只读交叉检查，逮住冲突、漂移和覆盖缺口。'],
-  ['交付至完成', '交付至完成', '合同冻结后在范围内自主循环实现-验证-修复，直到 blocking Oracle 全绿或精确阻塞。'],
-  ['07-测试执行', '测试执行', '记录真实执行结果与证据，翻转完成合同的 Oracle 状态。'],
-  ['08-发布准备', '发布准备', '完成个人项目的本地集成、版本号、tag、发布清单、回滚点和渠道材料。'],
-  ['09-发布执行', '发布执行', '在用户明确授权后执行远程 push、release、商店/平台发布或部署，并记录证据。'],
-  ['10-复盘总结', '复盘总结', '沉淀项目结论、可复用规则、知识库更新和下一轮改进项。'],
-  ['new-product', '初始化商业化工作流', '创建 business/{product}/ 容器、商业化状态文件和素材目录。'],
-  ['B1-业务定位', '业务定位', '基于产品服务盘点、市场调研和竞争对手分析形成定位陈述与细分选择。'],
-  ['B1-B8-商业化准备', '商业化准备编排', '在容器初始化后串联生成 B1 到 B8 的商业化文档；不授权对外投放。'],
-  ['B2-商业模式', '商业模式', '梳理价值主张、收入与定价假设、成本结构、单位经济和关键假设。'],
-  ['B3-PMF与客户画像', 'PMF 与客户画像', '验证产品市场匹配度，确定理想客户画像 ICP 和负面画像。'],
-  ['B4-场景与购买旅程', '场景与购买旅程', '深挖客户使用场景（JTBD）和付费购买旅程、异议与流失点。'],
-  ['B5-渠道漏斗映射', '渠道漏斗映射', '明确线上线下各渠道在转化漏斗中的位置、作用、成本和 ICP 匹配度。'],
-  ['B6-营销获客策略', '营销获客策略', '制定总体营销/获客策略：阶段目标、主攻渠道、信息一致性和内容支柱。'],
-  ['B7-营销预算', '营销预算', '确定金钱与时间双预算、渠道分配、CAC 目标和止损线。'],
-  ['B8-渠道执行策略', '渠道执行策略', '制定 SEO 及其他已选渠道的执行 playbook，并把营销工程需求回流研发轨。'],
-  ['B9-策略复盘', '策略复盘', '按周期复盘漏斗数据、渠道 ROI 和假设判定，输出渠道加码/保持/降配/砍掉决策。'],
-  ['workflow-status', '工作流状态', '汇总 features 与 business 下所有需求和产品的阶段状态、阻塞和下一步。']
-];
+const GENERATED_BY = `openone-workflow-kit ${PACKAGE_VERSION}`;
+const MANAGED_ADAPTER_MARKER = 'generated-by: openone-workflow-kit; managed-adapter: true';
+const COMMAND_MANIFEST = loadCommandManifest(path.join(KIT_ROOT, 'workflow/core/command-manifest.yaml'));
+const COMMANDS = COMMAND_MANIFEST.commands;
+// Keep the existing tuple consumers small while making the manifest the single source of truth.
+const STAGES = COMMANDS.map(({ id, title, description }) => [id, title, description]);
 
 const REQUIRED_SOURCES = [
   {
@@ -153,10 +125,11 @@ function toPortablePath(value) {
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
-  const target = path.resolve(options.target || process.cwd());
-  if (!fs.existsSync(target) || !fs.statSync(target).isDirectory()) {
-    throw new Error(`目标目录不存在: ${target}`);
+  const requestedTarget = path.resolve(options.target || process.cwd());
+  if (!fs.existsSync(requestedTarget) || !fs.statSync(requestedTarget).isDirectory()) {
+    throw new Error(`目标目录不存在: ${requestedTarget}`);
   }
+  const target = fs.realpathSync(requestedTarget);
 
   const detectedTools = detectTools(target);
   let enabledTools = options.tools ? normalizeTools(options.tools) : detectedTools;
@@ -197,14 +170,17 @@ async function main() {
   }
 
   const plannedWrites = buildInstallPlan(target, profile, options);
+  const legacyPlan = planLegacyCleanup(target, options, plannedWrites, profile.enabledTools);
   if (options.dryRun) {
-    printDryRun(target, profile, plannedWrites);
+    printDryRun(target, profile, plannedWrites, legacyPlan);
     return;
   }
 
+  assertSafeWritePlan(plannedWrites, options, target);
   for (const write of plannedWrites) {
-    writeManagedFile(write.file, write.content, options);
+    writeManagedFile(write, options, target);
   }
+  executeLegacyCleanup(legacyPlan);
 
   console.log(`已在 ${target} 初始化 agent 工作流`);
   console.log(`启用工具: ${enabledTools.join(', ')}`);
@@ -405,11 +381,16 @@ function walkFiles(root, maxDepth, visitor) {
 
 function buildInstallPlan(target, profile, options) {
   const writes = [];
-  const add = (rel, content) => writes.push({ file: path.join(target, rel), content });
+  const add = (rel, content, policy = {}) => writes.push({
+    file: path.join(target, rel),
+    content,
+    ...policy
+  });
 
-  add('workflow/team-profile.yaml', makeTeamProfileYaml(profile));
+  add('workflow/team-profile.yaml', makeTeamProfileYaml(profile), { preserveOnUpgrade: true });
   add('workflow/README.md', makeWorkflowReadme());
   add('workflow/core/README.md', readKitFile('workflow/core/README.md'));
+  add('workflow/core/command-manifest.yaml', readKitFile('workflow/core/command-manifest.yaml'));
   add('workflow/core/commands/README.md', readKitFile('workflow/core/commands/README.md'));
   add('workflow/core/templates/README.md', readKitFile('workflow/core/templates/README.md'));
   add('workflow/core/templates/00-workflow-status.md', readKitFile('workflow/core/templates/00-workflow-status.md'));
@@ -419,9 +400,9 @@ function buildInstallPlan(target, profile, options) {
   add('workflow/core/templates/completion-contract.md', readKitFile('workflow/core/templates/completion-contract.md'));
   add('workflow/core/templates/constitution.template.md', readKitFile('workflow/core/templates/constitution.template.md'));
   add('workflow/core/templates/living-spec.md', readKitFile('workflow/core/templates/living-spec.md'));
-  add('workflow/constitution.md', readKitFile('workflow/core/templates/constitution.template.md'));
-  add('workflow/standards/README.md', makeStandardsReadme());
-  add('specs/README.md', makeSpecsReadme());
+  add('workflow/constitution.md', readKitFile('workflow/core/templates/constitution.template.md'), { preserveOnUpgrade: true });
+  add('workflow/standards/README.md', makeStandardsReadme(), { preserveOnUpgrade: true });
+  add('specs/README.md', makeSpecsReadme(), { preserveOnUpgrade: true });
   add('workflow/core/templates/team-profile.template.yaml', readKitFile('workflow/core/templates/team-profile.template.yaml'));
   add('workflow/core/capabilities/README.md', readKitFile('workflow/core/capabilities/README.md'));
   for (const name of CAPABILITY_FILES) {
@@ -440,7 +421,12 @@ function buildInstallPlan(target, profile, options) {
   // Generate it regardless of selected tools so every adapter can point to it.
   add('AGENTS.md', makeAgentsEntry(profile));
   if (profile.enabledTools.includes('codex')) {
-    for (const [id] of STAGES) add(`.codex/prompts/${id}.md`, makePrompt(id));
+    add('.agents/skills/agent-workflow/SKILL.md', makeAgentWorkflowSkill(), { managedAdapter: true });
+    for (const command of COMMANDS) {
+      const base = `.agents/skills/${command.skill_slug}`;
+      add(`${base}/SKILL.md`, makeStageSkill(command), { managedAdapter: true });
+      add(`${base}/agents/openai.yaml`, makeStageSkillMetadata(command), { managedAdapter: true });
+    }
   }
   if (profile.enabledTools.includes('claude')) {
     add('CLAUDE.md', '先读取 AGENTS.md，再遵循 workflow/core 和 workflow/team-profile.yaml。.claude/commands 下的工具命令只是薄 adapter。\n');
@@ -476,24 +462,110 @@ function readKitFileIfExists(rel, fallback) {
   return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : fallback;
 }
 
-function writeManagedFile(file, content, options) {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  if (fs.existsSync(file) && !options.force) {
-    const current = fs.readFileSync(file, 'utf8');
-    if (current === content) {
-      console.log(`unchanged ${path.relative(process.cwd(), file)}`);
-      return;
-    }
-    const next = file + '.agent-workflow-new';
-    fs.writeFileSync(next, content);
-    console.log(`exists ${path.relative(process.cwd(), file)} -> wrote ${path.relative(process.cwd(), next)}`);
-    return;
-  }
-  fs.writeFileSync(file, content);
-  console.log(`wrote ${path.relative(process.cwd(), file)}`);
+function assertSafeWritePlan(writes, options, targetRoot) {
+  for (const write of writes) determineManagedWriteAction(write, options, targetRoot);
 }
 
-function printDryRun(target, profile, writes) {
+function writeManagedFile(write, options, targetRoot) {
+  assertNoManagedPathSymlink(targetRoot, write.file);
+  fs.mkdirSync(path.dirname(write.file), { recursive: true });
+  // Re-evaluate after mkdir so a path change between the plan and the write is
+  // caught as close as possible to the mutation.
+  const action = determineManagedWriteAction(write, options, targetRoot);
+  const rel = path.relative(process.cwd(), action.file);
+  if (action.type === 'unchanged') {
+    console.log(`unchanged ${rel}`);
+    return;
+  }
+  if (action.type === 'preserve') {
+    console.log(`preserved ${rel}（升级时保留用户事实/原则文件）`);
+    return;
+  }
+  if (action.type === 'write-alternate') {
+    // The action resolver guarantees this path does not exist. `wx` closes the
+    // last ordinary race without overwriting an existing merge sidecar.
+    fs.writeFileSync(action.file, write.content, { flag: 'wx' });
+    console.log(`exists ${path.relative(process.cwd(), write.file)} -> wrote ${rel}`);
+    return;
+  }
+  fs.writeFileSync(action.file, write.content);
+  console.log(`wrote ${rel}`);
+}
+
+function determineManagedWriteAction(write, options, targetRoot) {
+  const { file, content } = write;
+  assertNoManagedPathSymlink(targetRoot, file);
+  const existing = readRegularFileIfPresent(file, 'managed path');
+  if (existing.exists && existing.content === content) {
+    return { type: 'unchanged', file };
+  }
+  if (existing.exists && options.upgrade && write.preserveOnUpgrade) {
+    return { type: 'preserve', file };
+  }
+
+  const customAdapter = write.managedAdapter && isUserOwnedSkillPath(targetRoot, file, existing);
+  if ((!existing.exists && !customAdapter) || (existing.exists && options.force && !customAdapter)) {
+    return { type: 'write', file };
+  }
+
+  const alternate = `${file}.agent-workflow-new`;
+  assertNoManagedPathSymlink(targetRoot, alternate);
+  const alternateExisting = readRegularFileIfPresent(alternate, 'managed merge sidecar');
+  if (alternateExisting.exists) {
+    if (alternateExisting.content === content) return { type: 'unchanged', file: alternate };
+    throw new Error(`拒绝覆盖已有 managed merge sidecar: ${alternate}`);
+  }
+  return { type: 'write-alternate', file: alternate };
+}
+
+function readRegularFileIfPresent(file, label) {
+  if (!fs.existsSync(file)) return { exists: false, content: '' };
+  const stat = fs.lstatSync(file);
+  if (!stat.isFile() || stat.isSymbolicLink()) {
+    throw new Error(`${label} 不是普通文件: ${file}`);
+  }
+  return { exists: true, content: fs.readFileSync(file, 'utf8') };
+}
+
+function isUserOwnedSkillPath(targetRoot, file, existing) {
+  if (existing.exists && !existing.content.includes(MANAGED_ADAPTER_MARKER)) return true;
+  const skillsRoot = path.join(path.resolve(targetRoot), '.agents', 'skills');
+  const relative = path.relative(skillsRoot, path.resolve(file));
+  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) return false;
+  const [slug] = relative.split(path.sep);
+  if (!slug) return false;
+  const owner = path.join(skillsRoot, slug, 'SKILL.md');
+  if (path.resolve(owner) === path.resolve(file) || !fs.existsSync(owner)) return false;
+  assertNoManagedPathSymlink(targetRoot, owner);
+  const ownerFile = readRegularFileIfPresent(owner, 'Skill owner');
+  return ownerFile.exists && !ownerFile.content.includes(MANAGED_ADAPTER_MARKER);
+}
+
+function assertNoManagedPathSymlink(targetRoot, file) {
+  const root = path.resolve(targetRoot);
+  const resolved = path.resolve(file);
+  const relative = path.relative(root, resolved);
+  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new Error(`拒绝写入目标工作区外的 managed path: ${resolved}`);
+  }
+  let current = root;
+  for (const part of relative.split(path.sep).filter(Boolean)) {
+    current = path.join(current, part);
+    let stat;
+    try {
+      stat = fs.lstatSync(current);
+    } catch (error) {
+      if (error.code === 'ENOENT') break;
+      throw error;
+    }
+    if (stat.isSymbolicLink()) throw new Error(`拒绝通过 symbolic link 写入 managed path: ${current}`);
+    if (current !== resolved && !stat.isDirectory()) {
+      throw new Error(`managed path 的父路径不是目录: ${current}`);
+    }
+  }
+}
+
+function printDryRun(target, profile, writes, legacyPlan) {
   console.log(`Dry run 目标目录: ${target}`);
   console.log(`已识别工具: ${profile.detectedTools.join(', ') || '(无)'}`);
   console.log(`启用工具: ${profile.enabledTools.join(', ')}`);
@@ -501,6 +573,176 @@ function printDryRun(target, profile, writes) {
   console.log(`缺失资料组: ${profile.missing.map((item) => item.key).join(', ') || '(无)'}`);
   console.log('计划写入:');
   for (const write of writes) console.log(`- ${path.relative(target, write.file)}`);
+  if (legacyPlan && (legacyPlan.remove.length || legacyPlan.keep.length)) {
+    console.log('旧版 Codex adapter 清理计划（--upgrade 时执行）:');
+    for (const item of legacyPlan.remove) {
+      console.log(`- 将删除 ${path.relative(target, item.file)}（kit 指纹匹配；${item.reason}）`);
+    }
+    for (const item of legacyPlan.keep) {
+      console.log(`- 保留 ${path.relative(target, item.file)}（内容不匹配 kit 指纹或路径不可安全遍历）`);
+    }
+  }
+}
+
+function planLegacyCleanup(target, options, plannedWrites = [], enabledTools = []) {
+  const plan = { remove: [], keep: [], dirs: [], targetRoot: target };
+  if (!options.upgrade || !enabledTools.includes('codex')) return plan;
+
+  const legacyRoot = path.join(target, '.codex/prompts');
+  planLegacyCodexPrompts(target, legacyRoot, plan);
+  planOrphanCodexSkills(target, plannedWrites, plan);
+  return plan;
+}
+
+function planLegacyCodexPrompts(target, root, plan) {
+  try {
+    assertNoManagedPathSymlink(target, root);
+  } catch {
+    plan.keep.push({ file: root, reason: '旧版 Codex adapter 路径含 symbolic link，拒绝遍历或删除' });
+    return;
+  }
+  if (!fs.existsSync(root)) return;
+  const stat = fs.lstatSync(root);
+  const reason = 'Codex 不加载项目级 .codex/prompts；1.0.0 起迁移到 .agents/skills';
+  if (stat.isSymbolicLink() || !stat.isDirectory()) {
+    plan.keep.push({ file: root, reason: `${reason}；路径不是可安全遍历的普通目录` });
+    return;
+  }
+
+  // 0.1.0 only generated the 32 direct children below `.codex/prompts`.
+  // Nested directories are user-owned, even when a copied file still has an
+  // exact historical template fingerprint.
+  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+    const file = path.join(root, entry.name);
+    const stat = fs.lstatSync(file);
+    if (stat.isSymbolicLink() || stat.isDirectory() || !stat.isFile()) {
+      plan.keep.push({ file, reason: `${reason}；只迁移 0.1.0 生成的根层普通文件` });
+      continue;
+    }
+    const text = fs.readFileSync(file, 'utf8');
+    const id = path.basename(file, '.md');
+    const command = COMMANDS.find((item) => item.id === id);
+    const generated = path.extname(file) === '.md' && command &&
+      normalizeManagedText(text) === normalizeManagedText(makeHistoricalCodexPrompt(id));
+    if (generated) {
+      plan.remove.push({ file, reason, content: text });
+      plan.dirs.push(path.dirname(file));
+    } else {
+      plan.keep.push({ file, reason });
+    }
+  }
+  plan.dirs.push(root, path.dirname(root));
+}
+
+function planOrphanCodexSkills(target, plannedWrites, plan) {
+  const root = path.join(target, '.agents/skills');
+  try {
+    assertNoManagedPathSymlink(target, root);
+  } catch {
+    plan.keep.push({ file: root, reason: 'Codex Skills 路径含 symbolic link，拒绝遍历或删除' });
+    return;
+  }
+  if (!fs.existsSync(root)) return;
+  const stat = fs.lstatSync(root);
+  if (stat.isSymbolicLink() || !stat.isDirectory()) {
+    plan.keep.push({ file: root, reason: 'Codex Skills 根路径不是可安全遍历的普通目录' });
+    return;
+  }
+
+  const expected = new Set(plannedWrites.map((item) => path.resolve(item.file)));
+  const { files, unsafe } = listRegularFiles(root);
+  for (const file of unsafe) {
+    plan.keep.push({ file, reason: '拒绝跟随 Codex Skill 目录中的 symbolic link' });
+  }
+  for (const file of files) {
+    if (expected.has(path.resolve(file))) continue;
+    const text = fs.readFileSync(file, 'utf8');
+    if (text.includes(MANAGED_ADAPTER_MARKER)) {
+      plan.remove.push({
+        file,
+        reason: '当前 command manifest 已删除或重命名该 openone 管理的 Codex Skill',
+        content: text
+      });
+      let directory = path.dirname(file);
+      while (directory.startsWith(path.resolve(root))) {
+        plan.dirs.push(directory);
+        if (directory === path.resolve(root)) break;
+        directory = path.dirname(directory);
+      }
+    } else {
+      plan.keep.push({ file, reason: '不含 openone managed marker，按用户自定义 Skill 保留' });
+    }
+  }
+}
+
+function listRegularFiles(root) {
+  const files = [];
+  const unsafe = [];
+  function visit(directory) {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const file = path.join(directory, entry.name);
+      const stat = fs.lstatSync(file);
+      if (stat.isSymbolicLink()) {
+        unsafe.push(file);
+      } else if (stat.isDirectory()) {
+        visit(file);
+      } else if (stat.isFile()) {
+        files.push(file);
+      }
+    }
+  }
+  visit(root);
+  return { files, unsafe };
+}
+
+function executeLegacyCleanup(plan) {
+  for (const item of plan.remove) {
+    let current;
+    try {
+      assertNoManagedPathSymlink(plan.targetRoot, item.file);
+      const stat = fs.lstatSync(item.file);
+      if (!stat.isFile() || stat.isSymbolicLink()) throw new Error('not a regular file');
+      current = fs.readFileSync(item.file, 'utf8');
+    } catch {
+      console.log(`kept-changed ${item.file}（清理前路径状态已变化，拒绝删除）`);
+      continue;
+    }
+    if (current !== item.content) {
+      console.log(`kept-changed ${item.file}（清理计划生成后内容已变化，拒绝删除）`);
+      continue;
+    }
+    try {
+      assertNoManagedPathSymlink(plan.targetRoot, item.file);
+    } catch {
+      console.log(`kept-changed ${item.file}（清理前父路径状态已变化，拒绝删除）`);
+      continue;
+    }
+    fs.unlinkSync(item.file);
+    console.log(`removed-legacy ${item.file}（${item.reason}）`);
+  }
+  for (const item of plan.keep) {
+    console.log(`kept-unrecognized ${item.file}（${item.reason}）`);
+  }
+
+  const directories = [...new Set(plan.dirs.map((dir) => path.resolve(dir)))]
+    .sort((a, b) => b.split(path.sep).length - a.split(path.sep).length);
+  for (const directory of directories) {
+    try {
+      assertNoManagedPathSymlink(plan.targetRoot, directory);
+      const stat = fs.lstatSync(directory);
+      if (!stat.isDirectory() || stat.isSymbolicLink()) continue;
+      if (fs.readdirSync(directory).length === 0) {
+        fs.rmdirSync(directory);
+        console.log(`removed-legacy-dir ${directory}`);
+      }
+    } catch {
+      // Directory removal is best-effort; files are protected by exact fingerprints above.
+    }
+  }
+}
+
+function normalizeManagedText(value) {
+  return String(value).replace(/\r\n/g, '\n');
 }
 
 function makeTeamProfileYaml(profile) {
@@ -745,8 +987,11 @@ function makeToolUsage(profile) {
   if (tools.includes('codex')) {
     blocks.push(`### Codex
 
-- Codex 会自动读取本 \`AGENTS.md\`。
-- 阶段 prompt 位于 \`.codex/prompts/\`。可以调用阶段 prompt，或要求 Codex 按 \`workflow/core/commands/<stage>.md\` 执行。`);
+- Codex 会自动读取本 \`AGENTS.md\`，并从 \`.agents/skills/\` 发现本项目的总入口和 ${COMMANDS.length} 个阶段 Skill。
+- Codex Desktop 输入 \`/01\`、\`/B1\` 等关键词后，在 Skills 分组选择中文阶段；CLI/IDE 使用 \`/skills\` 或 \`$<skill-slug>\`。
+- Codex 的项目 Skill 不是 Claude 式字面自定义命令：不能把 \`/01-需求讨论\` 当作可直接提交的项目命令 ID。
+- 所有阶段 Skill 都设置 \`allow_implicit_invocation: false\`；选择 Skill 只选择阶段，不会绕过实现、发布、投放或其他授权闸门。
+- 项目级 \`.codex/prompts/\` 不会被 Codex 加载，本 kit 不再生成该目录。`);
   }
 
   if (tools.includes('cursor')) {
@@ -813,6 +1058,7 @@ ${makeCommandTable()}
 ## 单一事实源
 
 - 工作流规则：\`workflow/core/\`
+- 阶段清单：\`workflow/core/command-manifest.yaml\`
 - 工作区配置（事实与路径）：\`workflow/team-profile.yaml\`
 - 工作区宪法（不可协商原则）：\`workflow/constitution.md\`
 - 个人规范层：\`workflow/standards/\`
@@ -887,13 +1133,103 @@ function makeThinCommand(toolName, id) {
 `;
 }
 
-function makePrompt(id) {
+function makeHistoricalCodexPrompt(id) {
   return `# ${id}
 
 读取 \`AGENTS.md\`、\`workflow/team-profile.yaml\` 和 \`workflow/core/commands/${id}.md\`。
 
 优先使用本地证据。必要资料缺失时，更新 \`workflow/INITIALIZATION_QUESTIONS.md\` 或向用户索要缺失路径。
 `;
+}
+
+function makeStageSkill(command) {
+  const priorContext = command.id === 'init-workspace'
+    ? '目标工作区中的本地事实与资料路径'
+    : command.id === 'workflow-status'
+      ? '\`features/\` 与 \`business/\` 下的状态和阶段文档'
+      : isBusinessCommand(command.id)
+        ? '\`business/<product>/\` 下的前序阶段文档'
+        : '\`features/<feature>/\` 下的前序阶段文档';
+  const authorizationNote = isBusinessCommand(command.id)
+    ? '商业化 Skill 只授权生成文档和清单；发布、投放、outreach 或付费动作仍需用户明确授权。'
+    : '用户显式选择本 Skill 只表示选择阶段；实现、远程 push、release、部署、数据库或生产配置写入仍按 core 的闸门和授权边界处理。';
+
+  return `---
+name: ${command.skill_slug}
+description: ${yamlQuote(`仅在用户显式选择 ${command.id}（${command.title}）阶段时使用。${command.description}`)}
+---
+
+<!-- ${MANAGED_ADAPTER_MARKER} -->
+
+# /${command.id} ${command.title}
+
+本 Skill 是由 \`workflow/core/command-manifest.yaml\` 生成的分阶段发现入口，不复制阶段规则。
+
+- 阶段作用：${command.description}
+- 参数提示：\`${command.argument_hint}\`
+
+执行时必须按顺序读取：
+
+1. 根目录 \`AGENTS.md\`
+2. \`workflow/team-profile.yaml\`
+3. \`workflow/core/command-manifest.yaml\`
+4. \`workflow/core/commands/${command.id}.md\`
+5. ${priorContext}
+
+${authorizationNote}
+`;
+}
+
+function makeStageSkillMetadata(command) {
+  return `# ${MANAGED_ADAPTER_MARKER}
+interface:
+  display_name: ${yamlQuote(`${command.id} ${command.title}`)}
+  short_description: ${yamlQuote(shortDescription(command.description))}
+  default_prompt: ${yamlQuote(`执行 /${command.id} 阶段，并严格读取 AGENTS.md、team profile 与对应 core command；若参数不足先说明缺失项。`)}
+policy:
+  allow_implicit_invocation: false
+`;
+}
+
+function makeAgentWorkflowSkill() {
+  return `---
+name: agent-workflow
+description: 按 openone-workflow-kit 的阶段契约推进个人开发者的研发与商业化双轨工作。适用于需求、完成合同、实现、测试、发布、复盘、定位、商业模式、PMF、渠道、预算与策略复盘等阶段请求。
+---
+
+<!-- ${MANAGED_ADAPTER_MARKER} -->
+
+# agent-workflow
+
+本 Skill 只负责把请求路由到正确阶段契约。自动加载或语义匹配本 Skill 不等于用户显式选择了某个阶段，也不授权代码实现、远程发布、营销投放或其他高风险动作。
+
+执行任何工作流阶段时，按顺序读取：
+
+1. 根目录 \`AGENTS.md\`（快速开始、命令表、硬闸门）
+2. \`workflow/team-profile.yaml\`（事实、仓库、分支与授权策略）
+3. \`workflow/core/command-manifest.yaml\`（全部 ${COMMANDS.length} 个阶段及 Skill slug）
+4. \`workflow/core/commands/<用户选择的阶段>.md\`（阶段契约）
+
+规则：
+
+- 研发阶段产物写入工作区级 \`features/<feature>/\`；商业化阶段产物写入 \`business/<product>/\`。
+- 实现必须通过完成合同、功能分支、阶段和并行开发闸门。
+- 商业化阶段不授权公开发布、投放、outreach 或付费动作；营销工程需求必须回流研发轨。
+- 远程 push、release、部署、数据库写入和生产配置写入仍需要用户明确授权。
+- 优先使用本地证据；资料缺失时记录精确缺口。
+`;
+}
+
+function isBusinessCommand(id) {
+  return id === 'new-product' || /^B\d/.test(id);
+}
+
+function shortDescription(value) {
+  return value.length <= 60 ? value : `${value.slice(0, 59)}…`;
+}
+
+function yamlQuote(value) {
+  return JSON.stringify(String(value));
 }
 
 function makeCursorRule() {

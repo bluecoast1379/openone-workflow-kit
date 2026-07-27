@@ -11,8 +11,14 @@ agent-workflow-init --target . --tools codex --yes
 生成文件：
 
 - `AGENTS.md`
-- `.codex/prompts/`
+- `.agents/skills/agent-workflow/SKILL.md`
+- `.agents/skills/{skill_slug}/SKILL.md`
+- `.agents/skills/{skill_slug}/agents/openai.yaml`
 - `workflow/`
+
+Codex 的项目级入口是根 `AGENTS.md` 和 `.agents/skills/`。Codex Desktop 可输入 `/01`，从 Skills 分组选择中文 `01-需求讨论`；CLI/IDE 使用 `/skills` 或 `$workflow-01-requirement-discussion`。这是 Skill 选择，不是 Claude 式可直接提交的字面 `/01-需求讨论` 命令。全部阶段 Skill 的 `allow_implicit_invocation` 为 `false`。
+
+项目级 `.codex/prompts/` 不会被当前 Codex 加载，1.0.0 不再生成该目录。升级 0.1.0 工作区时使用 `--upgrade --force`；初始化器只删除内容精确匹配旧模板的 prompts，保留用户自定义或已编辑文件。先加 `--dry-run` 可只查看迁移计划。
 
 ## Claude Code
 

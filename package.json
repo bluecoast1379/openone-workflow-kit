@@ -1,6 +1,6 @@
 {
   "name": "openone-workflow-kit",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": false,
   "description": "面向独立开发者的工具无关 Agent 研发与商业化双轨工作流 kit，支持可验证交付、多工具适配、发布与增长复盘。",
   "keywords": [
@@ -54,7 +54,7 @@
     "openone-workflow-check-contract": "bin/check-contract.cjs"
   },
   "scripts": {
-    "check": "node --check bin/init-workspace.cjs && node --check bin/check-sanitized.cjs && node --check bin/check-contract.cjs && node --check test/smoke.cjs && node --check test/release-readiness.cjs && node --check scripts/release-source-state.cjs && node --check scripts/build-release.cjs && node bin/check-sanitized.cjs && node test/smoke.cjs && node test/release-readiness.cjs",
+    "check": "node --check bin/init-workspace.cjs && node --check bin/command-manifest.cjs && node --check bin/check-command-manifest.cjs && node --check bin/check-sanitized.cjs && node --check bin/check-contract.cjs && node --check test/smoke.cjs && node --check test/codex-adapter-conformance.cjs && node --check test/release-readiness.cjs && node --check scripts/release-source-state.cjs && node --check scripts/build-release.cjs && node bin/check-command-manifest.cjs && node bin/check-sanitized.cjs && node test/smoke.cjs && node test/codex-adapter-conformance.cjs && node test/release-readiness.cjs",
     "build:release": "node scripts/build-release.cjs",
     "init:dry-run": "node bin/init-workspace.cjs --target . --dry-run"
   },

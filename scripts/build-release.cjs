@@ -63,6 +63,9 @@ const installedEntry = path.join(
 run(process.execPath, [installedEntry, '--target', installTarget, '--tools', 'codex,trea,codebuddy', '--yes']);
 for (const rel of [
   'AGENTS.md',
+  '.agents/skills/agent-workflow/SKILL.md',
+  '.agents/skills/workflow-01-requirement-discussion/SKILL.md',
+  '.agents/skills/workflow-b9-strategy-review/agents/openai.yaml',
   '.trae/instructions.md',
   '.codebuddy/instructions.md',
   'workflow/team-profile.yaml',
@@ -100,7 +103,7 @@ const manifest = [
   '',
   '## 人工发布边界',
   '',
-  '本清单由本地构建生成。创建远程仓库、git push、创建 tag、npm publish 或其他远程写入动作都必须由维护者手动执行。',
+  '本清单由本地构建生成。创建远程仓库、git push、创建 tag、npm publish 或其他远程写入动作都必须先获得维护者在当前任务中的明确授权。',
   ''
 ].join('\n');
 

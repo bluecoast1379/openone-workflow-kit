@@ -14,7 +14,7 @@ npx openone-workflow-init --target . --tools codex,claude,cursor --yes
 
 ```bash
 cd /path/to/target-workspace
-npm install "git+https://github.com/bluecoast1379/openone-workflow-kit.git#v0.1.0" --save-dev
+npm install "git+https://github.com/bluecoast1379/openone-workflow-kit.git#v1.0.0" --save-dev
 npx openone-workflow-init --target . --tools codex,claude,cursor --yes
 ```
 
@@ -26,12 +26,12 @@ npx openone-workflow-init --target . --tools codex,claude,cursor --yes
 
 ```bash
 cd /path/to/target-workspace
-npm view openone-workflow-kit@0.1.0 version
-npm install openone-workflow-kit@0.1.0 --save-dev
+npm view openone-workflow-kit@1.0.0 version
+npm install openone-workflow-kit@1.0.0 --save-dev
 npx openone-workflow-init --target . --tools codex,claude,cursor --yes
 ```
 
-预期 `npm view` 输出 `0.1.0`。如果 Registry 尚未返回该版本，不应声称 npm 安装路径可用；请使用上方的已验证 tarball 或不可变 Git 引用。
+预期 `npm view` 输出 `1.0.0`。如果 Registry 尚未返回该版本，不应声称 npm 安装路径可用；请使用上方的已验证 tarball 或不可变 Git 引用。
 
 ## 会生成什么
 
@@ -40,7 +40,25 @@ npx openone-workflow-init --target . --tools codex,claude,cursor --yes
 - `workflow/adapters/`
 - `workflow/INSTALL_REPORT.md`
 - 必要资料缺失时生成 `workflow/INITIALIZATION_QUESTIONS.md`
-- 选中工具的薄入口，例如 `AGENTS.md`、`CLAUDE.md`、`.cursor/commands/`
+- 选中工具的薄入口，例如 Codex 的 `AGENTS.md` 与 `.agents/skills/`、Claude 的 `CLAUDE.md`、Cursor 的 `.cursor/commands/`
+
+## 从 0.1.0 升级 Codex adapter
+
+先预览迁移：
+
+```bash
+npx --yes --package openone-workflow-kit@1.0.0 openone-workflow-init \
+  --target . --tools codex --upgrade --force --dry-run
+```
+
+确认后执行：
+
+```bash
+npx --yes --package openone-workflow-kit@1.0.0 openone-workflow-init \
+  --target . --tools codex --upgrade --force --yes
+```
+
+1.0.0 会生成 `.agents/skills/`，并只删除内容精确匹配 0.1.0 模板的 `.codex/prompts/` 根层文件。子目录、用户自定义或被编辑的 prompt 和 symbolic link 均保留，不会自动跟随或删除。升级也保留已有 `team-profile.yaml`、工作区宪法、个人规范和同名用户 Skill；需要合并的新版 Skill 写入 `.agent-workflow-new`，不会静默覆盖。
 
 ## 安全边界
 
