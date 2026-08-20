@@ -16,10 +16,10 @@ Capture the independent-developer release discipline migrated from the local gst
 
 ## Branch And Tag Model
 
-- `prod`: production or last-published branch.
-- `main`: integration/testing branch.
-- Development branch: created from `prod`, usually `feature/<short-name>` or `fix/<short-name>`.
-- Tag: annotated `vX.Y.Z`, aligned with package, app, extension, or store version.
+- Read the repository's existing rules and `workflow/team-profile.yaml#branch_model` before naming a production, integration, testing, or development branch.
+- If branch roles are unknown, report the missing configuration and do not guess `prod`, `main`, or `test`.
+- A local development branch may be created from the configured base after scope and dirty-tree checks.
+- Use the repository's tag convention; if none is defined, propose a version-aligned annotated tag and record that it is a proposal rather than an existing rule.
 
 ## Channel Checks
 

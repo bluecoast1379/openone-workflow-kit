@@ -1,57 +1,35 @@
 # Capability: branch-gatekeeper
 
 - **Tier**: essential
-- **Stage**: `/04`, `/04A`, `/04B`
-- **Purpose**: 在业务代码写入前确认功能分支闸门和实现阶段闸门，防止代码落到错误基线。
+- **Stage**: `/04`, `/04A`, `/04B`, `/交付至完成`
+- **Purpose**: 写入业务代码前检查当前请求、分支和未提交改动，避免改到错误基线或覆盖用户工作。
 
 ## 为什么需要
 
-分支漂移和阶段漂移是代码管理失控的高频来源。实现必须同时满足：当前请求已进入实现阶段，且每个受影响仓库都在本需求功能分支或登记 worktree 中。
+不同仓库的分支规则不同。轻量小改不应因为工作流臆测 `prod/main` 而被阻止，但仍必须知道当前在哪个分支、已有哪些未提交改动，并遵循仓库已有规则。
 
 ## 输入
 
-- `workflow/team-profile.yaml#branch_model`
-- 每个受影响仓库的当前分支
-- 用户请求和 `features/{feature}/00-工作流状态.md` 中的当前阶段
-- 功能名称和前序阶段文档
+- 策略解析后的处理方式
+- `workflow/team-profile.yaml#branch_model`（如有明确配置）
+- 每个受影响仓库的 `git status --short --branch`
+- 用户请求、改动范围和当前实现命令
 
-## 输出
+## 规则
 
-```yaml
-result: PASS | WARN | BLOCK
-checks:
-  - name: stage_gate
-    status: pass | block
-    detail: "..."
-  - name: branch_gate_per_repo
-    status: pass | block
-    repos:
-      - path: "<repo>"
-        branch: "<current branch>"
-        verdict: pass | block
-        reason: "..."
-blocked_reason: "..."
-recommended_action: "请按 team-profile 中的分支规则准备功能分支。"
-```
+- `/04`、`/04A`、`/04B` 和 `/交付至完成` 均视为实现步骤；其他步骤未获得实现授权时不得写业务代码。
+- 所有处理方式都先检查当前分支和 dirty tree，不覆盖、暂存、移除或提交与本次无关的用户改动。
+- **轻量处理**：遵循仓库现有的分支策略。工作流不强制为每个小改创建功能分支，也不假设分支一定名为 `prod` 或 `main`。仅当仓库已有规则明确禁止当前分支修改时才阻止。
+- **完整检查**：按 `team-profile` 中已检测或用户配置的基线、开发分支和发布流程检查。未配置时报告“分支策略不明”，不臆测 `prod/main`。
+- 个人仓库中，agent 可在改动范围和 dirty tree 已检查后，按仓库规则创建本地分支；不需要额外的“先由用户建分支”条件。
+- 无 Git 元数据时，如实记录为本地快照风险；不得虚构分支或提交证据。
+- 远程 fetch/pull/push、远程分支写入、发布和部署仍需用户明确授权。
 
-## 阻断规则
+## 默认用户输出
 
-- 当前不是 `/04`、`/04A`、`/04B`，但 agent 将要修改业务源码、配置、SQL、迁移或部署文件时阻断。
-- 任一受影响仓库位于生产、集成、历史、不明或无关分支时阻断。
-- 功能分支不符合 `branch_model.feature_branch_rule` 时阻断。
-- 无 Git 元数据时降级为 WARN，并要求用户明确确认本地快照风险后才能继续。
+- “可以开始”，或“暂不能开始：<具体分支/未提交改动问题>”。
+- 需要时给出一个可执行的下一步，不只输出内部状态码。
 
-## Adapter 示例
+## 内部兼容详情
 
-- **L0**: 在 `AGENTS.md` 中写明闸门规则。
-- **L1**: prompt 要求用户粘贴当前分支输出。
-- **L2**: slash command 运行仓级分支检查并输出结论。
-- **L3**: 写入前 hook 发现分支不合规时中断。
-- **L4**: 独立 subagent 负责执行准入检查并返回结构化结果。
-
-## 反模式
-
-- 因为目录名看起来正确就跳过分支检查。
-- 认为“小改动”可以绕过 04 阶段。
-- 在 `main`、`prod`、`test` 或 integration 分支上直接修代码。
-- 两个需求混用同一个功能分支。
+Adapter 可使用 `PASS/WARN/BLOCK`、`stage_gate` 和 `branch_gate_per_repo` 作为机器字段，但它们不是默认的用户话术。

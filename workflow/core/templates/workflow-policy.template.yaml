@@ -1,0 +1,91 @@
+schema_version: "1.0"
+
+# 新安装默认走轻量处理。旧工作区没有 workflow/policy.yaml 时按完整检查处理，
+# 避免升级 kit 时情况不明地放宽原有要求。
+default_profile: adaptive
+missing_policy_fallback: strict
+
+profiles:
+  adaptive:
+    display_name: "自动选择"
+    description: "低风险本地改动走轻量路径；命中风险条件时自动升级为完整检查。"
+    low_risk_fast_path:
+      enabled: true
+      display_name: "轻量处理"
+      # 用户已要求修改时，该请求即是本地实现授权；仍不包含任何远程或生产写入。
+      user_change_request_is_local_implementation_authorization: true
+      create_feature_record: false
+      require_confirmed_completion_standard_file: false
+      required_sequence:
+        - "确认这次会改什么、不会改什么，并检查分支与未提交改动"
+        - "批量完成范围内修改"
+        - "先审查完整 diff，发现越界即升级"
+        - "再运行一次最终的定向验证"
+        - "最后一次性记录改动、检查结果、未完成项与明确卡点"
+      max_fix_cycles: 2
+      diff_review_before_final_verification: true
+      per_round_document_sync: false
+      terminal_record_mode: batch
+      final_verification: targeted
+      eligibility:
+        - "改动目标和边界清楚"
+        - "只影响一个本地仓库"
+        - "可本地回退，不包含不可逆操作"
+        - "有可运行的定向检查，或能清楚说明为何只能人工检查"
+        - "未命中任何自动升级条件"
+    escalation:
+      action: switch_to_strict
+      timing: immediate
+      triggers:
+        - id: public_api_or_external_contract
+          display: "对外 API、公开协议或外部集成约定变更"
+        - id: data_schema
+          display: "数据结构、持久化格式或兼容性变更"
+        - id: auth_or_permissions
+          display: "登录认证、授权、权限或安全边界变更"
+        - id: migration
+          display: "数据迁移、表结构迁移或批量修复"
+        - id: ci_cd
+          display: "持续集成与部署流程（CI/CD）或发布触发条件变更"
+        - id: deployment
+          display: "部署脚本、基础设施或运行环境变更"
+        - id: production_config
+          display: "生产配置、密钥或真实生产数据相关变更"
+        - id: cross_repo
+          display: "跨仓库改动"
+        - id: irreversible
+          display: "不可逆或难以恢复的操作"
+        - id: out_of_scope_diff
+          display: "diff 超出已确认的改动范围"
+        - id: pre_merge_or_release
+          display: "合并或正式发布前检查"
+
+  strict:
+    display_name: "完整检查"
+    description: "适用于系统性改动、高风险改动以及合并或发布前的证明。"
+    require_feature_record: true
+    require_confirmed_completion_standard: true
+    require_completion_standard_check: true
+    require_cross_document_consistency_check: true
+    require_full_verification: true
+    require_terminal_acceptance_record: true
+
+# 两种处理方式都不得放宽的安全底线。
+safety_invariants:
+  remote_write_requires_explicit_user_authorization: true
+  truthful_test_and_runtime_evidence: true
+  inspect_dirty_tree_and_preserve_unrelated_changes: true
+  real_same_repo_concurrency_requires_worktree: true
+  local_branch_creation_allowed_after_scope_and_dirty_tree_checks: true
+  destructive_or_irreversible_actions_require_explicit_user_authorization: true
+  no_silent_scope_expansion: true
+
+display_language:
+  default: zh-CN
+  plain_terms:
+    completion_contract: "完成标准"
+    acceptance_oracle: "验收项"
+    definition_lint: "完成标准检查"
+    gate: "开始条件或发布条件"
+    precise_blocker: "明确卡点"
+  show_internal_codes_only_in_technical_details: true

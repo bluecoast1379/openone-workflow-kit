@@ -60,12 +60,14 @@ agent 可以在本地准备、验证和打包 starter kit；远程发布动作�
 接收方应确认：
 
 - 已生成 `workflow/team-profile.yaml`。
+- 已生成 `workflow/policy.yaml`；新安装默认“自动选择”，其中低风险任务使用“轻量处理”。
 - 必要资料缺失时生成了 `workflow/INITIALIZATION_QUESTIONS.md`。
 - `workflow/core/` 存在，并包含命令、模板和能力说明。
 - `workflow/adapters/` 存在。
 - 选中的工具入口已生成，例如 `AGENTS.md`、`CLAUDE.md`、`.cursor/rules/`、`.github/copilot-instructions.md`、`.codebuddy/`、`.kiro/` 或 `.trae/`。
 - 使用 `trea` 时已归一为 `trae`。
 - 除非显式传入 `--force`，已有文件没有被覆盖。
+- 旧工作区没有 `workflow/policy.yaml` 时继续“完整检查”，已有自定义策略不会被升级静默覆盖。
 - 初始化期间没有远程 Git、push、构建、部署、数据库写入或生产配置写入。
 
 推荐 smoke 命令：
@@ -96,6 +98,7 @@ openone-workflow-init --target . --tools codex,claude,cursor,codebuddy,trea --ye
 - Node.js 版本；
 - 选择的工具列表；
 - 已移除敏感内容的 `workflow/team-profile.yaml`；
+- 当前 `workflow/policy.yaml`，或确认该旧工作区尚未生成策略文件；
 - 如存在，提供 `workflow/INITIALIZATION_QUESTIONS.md`；
 - 是否生成了 `.agent-workflow-new` 文件；
 - 精确错误输出。

@@ -33,7 +33,7 @@ level_2_manual_cd:
   when: "first prod release exists and rollback is documented"
   allowed:
     - manually approved deployment job
-    - deployment from main to prod after tests pass
+    - deployment from the configured integration source to the configured release target after tests pass
     - tagged release artifacts
   blocked:
     - unattended production deployment
@@ -42,7 +42,7 @@ level_3_guarded_auto_cd:
   when: "several stable releases have passed with reliable CI and rollback"
   allowed:
     - automatic non-production preview deployment
-    - optional automatic production deployment from prod tags or protected prod branch
+    - optional automatic production deployment from configured release tags or a protected release branch
   required:
     - branch protection
     - required CI checks
@@ -54,12 +54,10 @@ level_3_guarded_auto_cd:
 
 Automation must respect the workspace branch model:
 
-- Development branches are created from `prod`.
-- CI runs on development branches and on `main`.
-- `main` is the testing/integration branch.
-- Release promotion goes from `main` to `prod`.
-- No separate `test` branch is created for personal projects.
-- Production deployment must be tied to `prod` or a release tag produced from `prod`.
+- Read the detected repository rules and `workflow/team-profile.yaml#branch_model` before assigning branch roles.
+- CI triggers, integration branches, release branches, tags, and promotion direction must match the explicit branch model.
+- When branch roles are unknown, report the gap and do not guess `prod`, `main`, or `test`.
+- Production deployment must be tied to the explicitly configured release branch or release tag.
 
 ## Inputs
 
@@ -85,7 +83,7 @@ ci:
     - "<log, URL, or local command output>"
 cd:
   deployment_mode: "none" | "manual-gated" | "guarded-auto"
-  source_branch: "main" | "prod" | "<tag>"
+  source_branch: "<configured-branch-or-tag>"
   target_environment: "preview" | "production"
   rollback_plan: "<path or summary>"
 secrets:
@@ -101,8 +99,8 @@ recommended_action: "..."
 - Block any deployment automation that can deploy from a development branch directly to production.
 - Block production deployment if required CI checks are missing, failing, or not clearly tied to the release commit.
 - Block automation that stores secrets in source code, workflow documents, `.env` committed files, logs, screenshots, or prompt transcripts.
-- Block deployment from `main` to `prod` unless the release scope has passed `/07-测试执行`, `/08-发布准备` records the rollback plan, and `/09-发布执行` has explicit user authorization for remote or production actions.
-- Block creating a `test` branch as a deployment environment for personal projects; use `main` for testing/integration and provider preview environments for previews.
+- Block release promotion unless the configured source and target branches match the explicit branch model, the release scope has passed `/07-测试执行`, `/08-发布准备` records the rollback plan, and `/09-发布执行` has explicit user authorization for remote or production actions.
+- Block automation that invents a testing or release branch not present in the repository's explicit branch model.
 - Downgrade to WARN when the project has no code yet; require a CI/CD plan document but do not create workflows until implementation begins.
 
 ## Adapter Examples
@@ -117,7 +115,6 @@ recommended_action: "..."
 
 - Treating "personal project" as permission to deploy from a laptop without repeatable checks.
 - Enabling auto-deploy before the first manual production release proves the runbook.
-- Using `main` as both development and production.
-- Creating a `test` branch when provider preview environments or `main` integration are enough.
+- Assigning development, integration, testing, or production roles from common branch names instead of repository evidence.
 - Committing platform secrets, API keys, provisioning profiles, or App Store credentials.
-- Letting CI pass on a different commit than the one promoted to `prod`.
+- Letting CI pass on a different commit than the one promoted to the configured release branch or tag.

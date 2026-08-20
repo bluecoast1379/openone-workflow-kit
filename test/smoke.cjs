@@ -11,6 +11,26 @@ const commands = loadCommandManifest(path.join(root, 'workflow/core/command-mani
 const { toPortablePath } = require(init);
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-workflow-smoke-'));
 
+for (const rel of [
+  'examples/team-profile.example.yaml',
+  'examples/ecommerce/team-profile.example.yaml',
+  'examples/education/team-profile.example.yaml',
+  'examples/saas-to-b/team-profile.example.yaml'
+]) {
+  const example = fs.readFileSync(path.join(root, rel), 'utf8');
+  if (!example.includes('workflow/policy.yaml')) throw new Error(`${rel} does not use the managed policy`);
+  for (const obsolete of [
+    'require_stage_gate_for_code',
+    'require_feature_branch_for_code',
+    'worktree-required-after-implementation-stage',
+    'high_risk_files:',
+    '- "package.json"',
+    '- "lockfiles"'
+  ]) {
+    if (example.includes(obsolete)) throw new Error(`${rel} still contains obsolete strict default ${obsolete}`);
+  }
+}
+
 // Windows path.relative() emits backslashes. Generated team-profile paths are
 // portable identifiers and must always use POSIX separators.
 const windowsRepoPath = path.win32.relative('C:\\workspace', 'C:\\workspace\\apps\\web');
@@ -68,6 +88,12 @@ function assertContains(rel, text) {
   if (!content.includes(text)) throw new Error(`${rel} does not contain ${text}`);
 }
 
+function assertNotContains(rel, text) {
+  const file = path.join(tmp, rel);
+  const content = fs.readFileSync(file, 'utf8');
+  if (content.includes(text)) throw new Error(`${rel} unexpectedly contains ${text}`);
+}
+
 mkdir('docs/product');
 write('docs/business-overview.md', '# Business overview\n');
 write('docs/frontend-rules.md', '# Frontend rules\n');
@@ -101,7 +127,9 @@ for (const rel of [
   '.kiro/instructions.md',
   '.trae/instructions.md',
   'workflow/team-profile.yaml',
+  'workflow/policy.yaml',
   'workflow/core/command-manifest.yaml',
+  'workflow/core/tools/resolve-policy.cjs',
   'workflow/INITIALIZATION_QUESTIONS.md',
   'workflow/core/commands/init-workspace.md',
   'workflow/core/commands/04-代码实现.md',
@@ -110,6 +138,7 @@ for (const rel of [
   'workflow/core/commands/澄清.md',
   'workflow/core/commands/一致性检查.md',
   'workflow/core/templates/completion-contract.md',
+  'workflow/core/templates/workflow-policy.template.yaml',
   'workflow/core/templates/constitution.template.md',
   'workflow/core/templates/living-spec.md',
   'workflow/core/capabilities/definition-lint.md',
@@ -142,8 +171,25 @@ for (const rel of [
 
 assertNotExists('.codex/prompts');
 assertContains('.agents/skills/agent-workflow/SKILL.md', 'name: agent-workflow');
-assertContains('.agents/skills/agent-workflow/SKILL.md', '研发与商业化双轨');
-assertContains('.agents/skills/agent-workflow/SKILL.md', '不授权代码实现、远程发布、营销投放');
+assertContains('.agents/skills/agent-workflow/SKILL.md', '自然语言请求');
+assertContains('.agents/skills/agent-workflow/SKILL.md', '轻量处理');
+assertContains('.agents/skills/agent-workflow/SKILL.md', '仍需要用户明确授权');
+assertContains('workflow/policy.yaml', 'default_profile: adaptive');
+assertContains('workflow/policy.yaml', 'missing_policy_fallback: strict');
+assertContains('workflow/policy.yaml', 'max_fix_cycles: 2');
+const installedResolver = path.join(tmp, 'workflow/core/tools/resolve-policy.cjs');
+const resolvedLowRisk = spawnSync(process.execPath, [
+  installedResolver, '--workspace', tmp, '--changed-files', 'src/button-label.ts'
+], { encoding: 'utf8' });
+if (resolvedLowRisk.status !== 0 || JSON.parse(resolvedLowRisk.stdout).resolved_profile !== 'adaptive') {
+  throw new Error(`installed policy resolver did not select adaptive: ${resolvedLowRisk.stdout} ${resolvedLowRisk.stderr}`);
+}
+const resolvedHighRisk = spawnSync(process.execPath, [
+  installedResolver, '--workspace', tmp, '--changed-files', 'db/migrations/001.sql'
+], { encoding: 'utf8' });
+if (resolvedHighRisk.status !== 0 || JSON.parse(resolvedHighRisk.stdout).resolved_profile !== 'strict') {
+  throw new Error(`installed policy resolver did not escalate: ${resolvedHighRisk.stdout} ${resolvedHighRisk.stderr}`);
+}
 
 const stageSkillDirectories = fs.readdirSync(path.join(tmp, '.agents/skills'), { withFileTypes: true })
   .filter((entry) => entry.isDirectory() && entry.name !== 'agent-workflow');
@@ -155,15 +201,81 @@ for (const command of commands) {
   const base = `.agents/skills/${command.skill_slug}`;
   const skill = `${base}/SKILL.md`;
   const metadata = `${base}/agents/openai.yaml`;
+  const coreCommand = `workflow/core/commands/${command.id}.md`;
   assertFile(skill);
   assertFile(metadata);
   assertContains(skill, `name: ${command.skill_slug}`);
   assertContains(skill, `workflow/core/commands/${command.id}.md`);
-  assertContains(skill, command.description);
+  assertContains(skill, command.user_title);
+  assertContains(skill, command.user_description);
   assertContains(skill, command.argument_hint);
-  assertContains(metadata, `display_name: \"${command.id} ${command.title}\"`);
-  assertContains(metadata, `执行 /${command.id} 阶段`);
+  assertNotContains(skill, 'AGENTS.md');
+  assertNotContains(skill, 'workflow/core/command-manifest.yaml');
+  assertContains(metadata, `display_name: \"${command.user_title}\"`);
+  assertContains(metadata, command.user_description);
+  assertContains(metadata, `请${command.user_title}`);
   assertContains(metadata, 'allow_implicit_invocation: false');
+  assertNotContains(coreCommand, 'AGENTS.md');
+  assertNotContains(coreCommand, 'workflow/core/command-manifest.yaml');
+}
+
+const plainLanguageSurfaces = [
+  'AGENTS.md',
+  'CLAUDE.md',
+  'workflow/README.md',
+  'workflow/constitution.md',
+  'workflow/team-profile.yaml',
+  'workflow/core/templates/00-workflow-status.md',
+  'workflow/core/templates/completion-contract.md',
+  'specs/README.md',
+  '.agents/skills/agent-workflow/SKILL.md',
+  '.cursor/rules/agent-workflow-core.mdc',
+  '.github/copilot-instructions.md',
+  '.codebuddy/instructions.md',
+  '.kiro/instructions.md',
+  '.trae/instructions.md',
+  ...commands.map((command) => `.agents/skills/${command.skill_slug}/SKILL.md`),
+  ...commands.map((command) => `.claude/commands/${command.id}.md`),
+  ...commands.map((command) => `.cursor/commands/${command.id}.md`)
+];
+const internalTerms = [
+  'feature 容器',
+  '完成合同',
+  '冻结合同',
+  'Oracle',
+  'Definition Lint',
+  'blocking',
+  'STALE',
+  'WAIVED',
+  '状态账本',
+  'implementation_gate'
+];
+for (const rel of plainLanguageSurfaces) {
+  const content = fs.readFileSync(path.join(tmp, rel), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+  for (const term of internalTerms) {
+    if (content.includes(term)) throw new Error(`${rel} exposes internal term ${term}`);
+  }
+}
+
+const defaultCoreTerms = [
+  ...internalTerms,
+  '歧义消融',
+  '质量预算',
+  '精确阻塞',
+  '闸门',
+  '容器',
+  '漂移',
+  '准入'
+];
+for (const command of commands) {
+  const rel = `workflow/core/commands/${command.id}.md`;
+  const content = fs.readFileSync(path.join(tmp, rel), 'utf8')
+    .replace(/^## 内部兼容详情[\s\S]*$/m, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/`[^`]*`/g, '');
+  for (const term of defaultCoreTerms) {
+    if (content.includes(term)) throw new Error(`${rel} exposes internal term ${term} outside technical details`);
+  }
 }
 
 for (const id of ['new-product', 'B1-业务定位', 'B1-B8-商业化准备', 'B9-策略复盘']) {
@@ -171,7 +283,9 @@ for (const id of ['new-product', 'B1-业务定位', 'B1-B8-商业化准备', 'B9
   assertContains(`.agents/skills/${command.skill_slug}/SKILL.md`, 'business/<product>/');
 }
 const statusCommand = commands.find((item) => item.id === 'workflow-status');
-assertContains(`.agents/skills/${statusCommand.skill_slug}/SKILL.md`, '`features/` 与 `business/`');
+assertContains(`.agents/skills/${statusCommand.skill_slug}/SKILL.md`, '`features/*/00-工作流状态.md`');
+assertContains(`.agents/skills/${statusCommand.skill_slug}/SKILL.md`, '`business/*/00-商业化状态.md`');
+assertContains(`.agents/skills/${statusCommand.skill_slug}/SKILL.md`, '不读取本地代码');
 
 assertContains('workflow/team-profile.yaml', '- trae');
 assertContains('workflow/team-profile.yaml', 'apps/web');
@@ -179,33 +293,74 @@ assertContains('workflow/team-profile.yaml', 'services/api');
 assertContains('workflow/INSTALL_REPORT.md', '初始化器没有执行远程 Git 命令');
 assertContains('workflow/team-profile.yaml', 'agent-allowed-after-scope-check');
 
-// AGENTS.md must contain the comprehensive usage guide, not just hard gates.
-assertContains('AGENTS.md', '## 快速开始');
-assertContains('AGENTS.md', '## 工作流命令');
-assertContains('AGENTS.md', '## 任务描述模板');
-assertContains('AGENTS.md', '## 工具使用方式');
-assertContains('AGENTS.md', '### Cursor');
-assertContains('AGENTS.md', '/04-代码实现');
-// The command table must list every stage.
-assertContains('AGENTS.md', '/08-发布准备');
-assertContains('AGENTS.md', '/09-发布执行');
-assertContains('AGENTS.md', '/10-复盘总结');
-// The business track must be wired into the guide, profile, and adapters.
-assertContains('AGENTS.md', '/new-product');
-assertContains('AGENTS.md', '/B1-业务定位');
-assertContains('AGENTS.md', '/B9-策略复盘');
+// The globally loaded entry must stay compact and must not duplicate the 32-stage catalog.
+const agentsContent = fs.readFileSync(path.join(tmp, 'AGENTS.md'), 'utf8');
+const agentsBytes = Buffer.byteLength(agentsContent, 'utf8');
+if (agentsBytes > 3072) {
+  throw new Error(`AGENTS.md should stay within 3 KiB, found ${agentsBytes} bytes`);
+}
+for (const marker of [
+  'workflow/policy.yaml',
+  '自动选择',
+  '完整检查',
+  '轻量处理',
+  '最多进行两轮修复',
+  '真实执行过的检查',
+  '远程推送'
+]) {
+  if (!agentsContent.includes(marker)) throw new Error(`AGENTS.md does not contain ${marker}`);
+}
+for (const marker of [
+  '/04-代码实现',
+  '/B1-业务定位',
+  'Oracle',
+  'Definition Lint',
+  '完成合同',
+  '状态账本'
+]) {
+  if (agentsContent.includes(marker)) throw new Error(`AGENTS.md unexpectedly contains ${marker}`);
+}
+
+// The business track must remain discoverable through generated adapters and profile data.
 assertContains('workflow/team-profile.yaml', 'business_dir');
 assertContains('workflow/team-profile.yaml', 'outbound_marketing_actions');
 assertContains('workflow/team-profile.yaml', 'market_research');
+assertContains('workflow/team-profile.yaml', 'policy: "workflow/policy.yaml"');
+assertContains('workflow/team-profile.yaml', 'user_facing_profiles');
+assertContains('workflow/team-profile.yaml', 'completion_language');
+for (const marker of ['S/M/L', 'frozen-contract', 'blocking-oracles', 'require_stage_gate_for_code']) {
+  assertNotContains('workflow/team-profile.yaml', marker);
+}
+for (const marker of [
+  'production_branch: "prod"',
+  'integration_branch: "main"',
+  '.github/workflows/**',
+  '**/migrations/**',
+  'application*.yml',
+  'application*.yaml',
+  'bootstrap*.yml',
+  'bootstrap*.yaml',
+  '**/*prod*.yml',
+  '**/*prod*.yaml',
+  '**/*production*.yml',
+  '**/*production*.yaml',
+  '**/config/**/prod*.yml',
+  '**/config/**/prod*.yaml',
+  '**/application-prod*.yml',
+  '**/application-prod*.yaml',
+  '.env.prod*',
+  '.env.production*'
+]) {
+  assertNotContains('workflow/team-profile.yaml', marker);
+}
+assertContains('workflow/team-profile.yaml', 'high_risk_detection: "use workflow/policy.yaml and workflow/core/tools/resolve-policy.cjs"');
+assertNotContains('workflow/team-profile.yaml', 'high_risk_files:');
 assertContains('.cursor/commands/B1-业务定位.md', 'workflow/core/commands/B1-业务定位.md');
-assertContains('.cursor/rules/agent-workflow-core.mdc', 'B9-策略复盘');
-// Definition-of-done mechanics must be wired through guide, profile, and adapters.
-assertContains('AGENTS.md', '/定义完成');
-assertContains('AGENTS.md', '/交付至完成');
-assertContains('AGENTS.md', '完成合同');
+assertContains('.cursor/rules/agent-workflow-core.mdc', 'workflow/policy.yaml');
+assertContains('.cursor/rules/agent-workflow-core.mdc', '自然语言');
+// Completion mechanics must remain wired through profile and compatibility adapters.
 assertContains('workflow/team-profile.yaml', 'specs_dir');
-assertContains('workflow/team-profile.yaml', 'done_verdict');
-assertContains('.cursor/rules/agent-workflow-core.mdc', '定义完成');
+assertContains('.cursor/rules/agent-workflow-core.mdc', '完整检查');
 assertContains('.cursor/commands/定义完成.md', 'workflow/core/commands/定义完成.md');
 
 // Contract checker: a well-formed frozen contract passes, a broken one fails.
@@ -253,6 +408,71 @@ const goodRun = spawnSync(process.execPath, [checker, path.join(tmp, 'features/d
 if (goodRun.status !== 0) {
   throw new Error(`check-contract should pass a valid contract: ${goodRun.stdout} ${goodRun.stderr}`);
 }
+const plainContract = `# 完成标准：plain-demo
+
+## 完成标准状态
+
+| 项 | 内容 |
+| --- | --- |
+| 改动名称 | plain-demo |
+| 改动类型 | 常规改动 |
+| 状态 | 已确认 |
+| 确认时间 | 2026-01-01 |
+| 确认记录 | 用户于会话中确认 |
+| 完成标准检查 | 已通过 |
+
+## ★ 目标与不做的事
+
+- WHEN 用户提交空表单 THE SYSTEM SHALL 阻止提交
+
+## ★ 需要精确说明的词
+
+| 术语 | 明确定义 | 替代的模糊说法 |
+| --- | --- | --- |
+| 提交成功 | 服务端返回 201 且列表可见 | 提交成功 |
+
+## 数据怎样流动、状态怎样变化
+
+- 表单数据只在校验通过后发送到服务端。
+
+## 出错时如何收场
+
+- 校验失败时保留输入并显示可操作的错误。
+
+## 质量上限与下限
+
+- 相关定向测试必须通过。
+
+## 这次会改什么、不会改什么
+
+- 只修改表单校验，不改对外接口。
+
+## ★ 验收项
+
+| ID | 完成条件 | 检查方法 | 类型 | 必须通过 | 状态 | 证据 | 更新时间 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| A-001 | WHEN 提交空表单 THE SYSTEM SHALL 阻止并提示 | npm test -- form.spec | auto | 是 | 已通过 | 输出片段 | 2026-01-01 |
+
+## 完成标准检查
+
+| # | 检查内容 | 结论 | 缺口与处理 |
+| --- | --- | --- | --- |
+| 1 | 范围与验收方法 | 已通过 | - |
+
+## ★ 待确认项
+
+- 无
+
+## 修订记录
+
+| 时间 | 修订内容 | 原因 | 用户确认 |
+| --- | --- | --- | --- |
+`;
+write('features/plain-demo/00-完成合同.md', plainContract);
+const plainRun = spawnSync(process.execPath, [checker, path.join(tmp, 'features/plain-demo/00-完成合同.md')], { encoding: 'utf8' });
+if (plainRun.status !== 0) {
+  throw new Error(`check-contract should pass the plain-language format: ${plainRun.stdout} ${plainRun.stderr}`);
+}
 const badContract = goodContract
   .replace('| Definition Lint | 通过 |', '| Definition Lint | 未运行 |')
   .replace('npm test -- form.spec', '待填写');
@@ -264,7 +484,7 @@ if (badRun.status === 0) {
 
 // The Cursor rule must explain how to run a stage via Cursor custom commands.
 assertContains('.cursor/rules/agent-workflow-core.mdc', '.cursor/commands/');
-assertContains('.cursor/rules/agent-workflow-core.mdc', 'workflow/core/commands/04-代码实现.md');
+assertContains('.cursor/rules/agent-workflow-core.mdc', '低风险改动采用“轻量处理”');
 // Cursor custom slash command adapters must be generated for every stage.
 assertFile('.cursor/commands/04-代码实现.md');
 assertFile('.cursor/commands/10-复盘总结.md');
@@ -290,6 +510,9 @@ for (const stale of fs.readdirSync(path.join(tmp, 'workflow'))) {
 }
 const profileBefore = fs.readFileSync(path.join(tmp, 'workflow/team-profile.yaml'), 'utf8');
 fs.writeFileSync(path.join(tmp, 'workflow/team-profile.yaml'), profileBefore + '\n# user note\n');
+const policyFile = path.join(tmp, 'workflow/policy.yaml');
+const policyBefore = fs.readFileSync(policyFile, 'utf8');
+fs.writeFileSync(policyFile, policyBefore + '\n# user policy note\n');
 const constitutionFile = path.join(tmp, 'workflow/constitution.md');
 const constitutionBefore = fs.readFileSync(constitutionFile, 'utf8');
 fs.writeFileSync(constitutionFile, constitutionBefore + '\n# user constitution note\n');
@@ -301,11 +524,64 @@ if (!profileAfter.includes('# user note')) {
 if (!fs.readFileSync(constitutionFile, 'utf8').includes('# user constitution note')) {
   throw new Error('upgrade --force overwrote user principles in constitution.md');
 }
+if (!fs.readFileSync(policyFile, 'utf8').includes('# user policy note')) {
+  throw new Error('upgrade --force overwrote user policy in workflow/policy.yaml');
+}
 const upgradeStrayFiles = fs
   .readdirSync(path.join(tmp, 'workflow'))
   .filter((name) => name.endsWith('.agent-workflow-new'));
 if (upgradeStrayFiles.length) {
   throw new Error(`upgrade --force should not produce new .agent-workflow-new files, found: ${upgradeStrayFiles.join(',')}`);
+}
+
+// Passing --upgrade in a genuinely fresh directory must not turn a new install
+// into a legacy workspace. Fresh installs always start with automatic selection.
+const freshUpgradeTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'openone-fresh-upgrade-'));
+runAt(freshUpgradeTmp, [
+  '--target', freshUpgradeTmp, '--tools', 'codex', '--upgrade', '--force', '--yes'
+]);
+const freshUpgradePolicy = fs.readFileSync(path.join(freshUpgradeTmp, 'workflow/policy.yaml'), 'utf8');
+if (!/^default_profile:\s*adaptive(?:\s|#|$)/m.test(freshUpgradePolicy)) {
+  throw new Error('fresh install with --upgrade should still default to adaptive');
+}
+
+// A recognizable legacy workspace upgraded without a policy must keep the old strict behavior.
+const legacyPolicyTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'openone-legacy-policy-'));
+fs.mkdirSync(path.join(legacyPolicyTmp, 'workflow'), { recursive: true });
+fs.writeFileSync(
+  path.join(legacyPolicyTmp, 'workflow/team-profile.yaml'),
+  'schema_version: "1.0"\n# existing openone workspace\n'
+);
+runAt(legacyPolicyTmp, [
+  '--target', legacyPolicyTmp, '--tools', 'codex', '--upgrade', '--force', '--yes'
+]);
+const legacyPolicyFile = path.join(legacyPolicyTmp, 'workflow/policy.yaml');
+const legacyPolicy = fs.readFileSync(legacyPolicyFile, 'utf8');
+if (!/^default_profile:\s*strict(?:\s|#|$)/m.test(legacyPolicy)) {
+  throw new Error('upgrade without workflow/policy.yaml did not preserve strict behavior');
+}
+fs.writeFileSync(legacyPolicyFile, `${legacyPolicy}\n# user legacy policy note\n`);
+runAt(legacyPolicyTmp, [
+  '--target', legacyPolicyTmp, '--tools', 'codex', '--upgrade', '--force', '--yes'
+]);
+if (!fs.readFileSync(legacyPolicyFile, 'utf8').includes('# user legacy policy note')) {
+  throw new Error('repeated upgrade overwrote the legacy workspace policy');
+}
+
+// Re-running the initializer in a recognizable old workspace must also stay
+// strict even when the caller forgot --upgrade.
+const legacyRerunTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'openone-legacy-rerun-'));
+fs.mkdirSync(path.join(legacyRerunTmp, 'workflow'), { recursive: true });
+fs.writeFileSync(
+  path.join(legacyRerunTmp, 'workflow/team-profile.yaml'),
+  'schema_version: "1.0"\n# existing openone workspace\n'
+);
+runAt(legacyRerunTmp, [
+  '--target', legacyRerunTmp, '--tools', 'codex', '--yes'
+]);
+const rerunPolicy = fs.readFileSync(path.join(legacyRerunTmp, 'workflow/policy.yaml'), 'utf8');
+if (!/^default_profile:\s*strict(?:\s|#|$)/m.test(rerunPolicy)) {
+  throw new Error('recognizable old workspace without --upgrade did not preserve strict behavior');
 }
 
 // Codex 0.1.0 migration: exact generated prompts are removed, while custom,
@@ -483,8 +759,8 @@ if (process.platform !== 'win32') {
   }
 }
 
-// Cursor-only install must still generate AGENTS.md (the tool-neutral usage guide),
-// even though codex is not selected.
+// Cursor-only install must still generate the compact tool-neutral entry,
+// even though Codex is not selected.
 const cursorTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-workflow-cursor-'));
 spawnSync(process.execPath, [init, '--target', cursorTmp, '--tools', 'cursor', '--yes'], {
   cwd: cursorTmp,
@@ -500,8 +776,8 @@ for (const rel of [
   }
 }
 const cursorAgents = fs.readFileSync(path.join(cursorTmp, 'AGENTS.md'), 'utf8');
-if (!cursorAgents.includes('### Cursor')) {
-  throw new Error('cursor-only AGENTS.md missing the Cursor usage section');
+if (!cursorAgents.includes('workflow/policy.yaml') || !cursorAgents.includes('自动选择')) {
+  throw new Error('cursor-only AGENTS.md missing the compact policy guidance');
 }
 
 console.log('Smoke test passed.');

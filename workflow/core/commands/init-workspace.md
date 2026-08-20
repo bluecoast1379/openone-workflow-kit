@@ -2,11 +2,10 @@
 
 ## Goal
 
-初始化工作区: 扫描本地资料、生成 team-profile、缺资料提问，并生成当前工具 adapter。
+初始化工作区：扫描本地资料，生成工作区配置、处理策略和当前工具的入口。
 
 ## Required Inputs
 
-- `AGENTS.md`
 - `workflow/team-profile.yaml`
 - Previous stage documents under workspace-level `features/{feature}/`
 - Local code, local docs, and user-provided source materials listed in team-profile
@@ -18,12 +17,14 @@
 - 默认使用简体中文展示工作流沟通和阶段产物；专有名词、产品名、品牌名、代码标识符、命令、文件路径、分支名、API、SDK、框架、协议、标准、错误信息和官方英文术语保留原文。
 - Do not claim tests, builds, screenshots, deployments, or reviews passed unless they were actually executed.
 - Local branch creation, commit, tag, and local merge may be executed by the agent for personal projects after scope and working-tree checks. Remote Git refresh, push, release, deployment, database write, and production config write require explicit user authorization.
-- This stage does not authorize business code changes unless the current command is an implementation command and all gates pass.
+- 本阶段不授权修改业务代码；只有实现步骤且已满足开始条件时才能修改。
 
 
 
 ## Required Outputs
 
 - Update or create the corresponding file under workspace-level `features/{feature}/`.
+- 新安装按 `workflow/core/templates/workflow-policy.template.yaml` 生成 `workflow/policy.yaml`，默认为“自动选择”。升级旧工作区且策略文件原先缺失时，生成“完整检查”默认值，不静默放宽。
+- 安装 `workflow/core/tools/resolve-policy.cjs`，用于在实现命令中解析处理方式与自动升级信号。
 - Update workspace-level `features/{feature}/00-工作流状态.md` when stage status changes.
 - Record unresolved questions and evidence gaps explicitly.

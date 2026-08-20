@@ -1,8 +1,10 @@
-# 手动发布指南
+# v1.1.0 手动发布指南
 
-本指南用于维护 OpenOne Workflow Kit 自身。agent 可以准备本地验证和发布说明；远程仓库创建、push、tag push 或 package 发布需要维护者明确授权。
+> 本指南用于发布 v1.1.0。v1.0.0 的历史说明保留在 `docs/releases/v1.0.0.md` 和对应 Git Tag 中。
 
-## v1.0.0 本地准入
+本指南用于维护 OpenOne Workflow Kit 的发布证据。agent 可以准备本地验证和发布说明；远程仓库创建、push、tag push 或 package 发布需要维护者明确授权。
+
+## v1.1.0 本地准入
 
 先运行：
 
@@ -30,7 +32,7 @@ dist/RELEASE_MANIFEST.md
 再核对 npm 上没有已发布的同版本：
 
 ```bash
-npm view openone-workflow-kit@1.0.0 version
+npm view openone-workflow-kit@1.1.0 version
 ```
 
 首次发布前预期 Registry 返回 404/`E404`。只有精确的不存在结果才能解读为“尚未发布”；认证、网络或权限错误都必须先解决。
@@ -46,7 +48,7 @@ npm view openone-workflow-kit@1.0.0 version
 - 人工检查 tarball 文件列表；
 - 确认没有私有资料、真实业务数据或凭证。
 
-## 发布 v1.0.0（授权后）
+## 发布 v1.1.0（授权后）
 
 先通过 PR 把 reviewed commit 合入 `main`，等待该 `main` SHA 的 GitHub Actions 全绿；随后切换到本地 `main` 并只允许 fast-forward 到远端真相：
 
@@ -62,13 +64,16 @@ npm run build:release
 ```bash
 source_commit="$(sed -n 's/^- source_commit: //p' dist/RELEASE_MANIFEST.md)"
 source_tree="$(sed -n 's/^- source_tree: //p' dist/RELEASE_MANIFEST.md)"
-local_shasum="$(node -e "const fs=require('node:fs'),c=require('node:crypto');process.stdout.write(c.createHash('sha1').update(fs.readFileSync('dist/openone-workflow-kit-1.0.0.tgz')).digest('hex'))")"
+local_shasum="$(node -e "const fs=require('node:fs'),c=require('node:crypto');process.stdout.write(c.createHash('sha1').update(fs.readFileSync('dist/openone-workflow-kit-1.1.0.tgz')).digest('hex'))")"
 remote_main="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
 test "$(git branch --show-current)" = "main"
 test -z "$(git status --porcelain=v1 --untracked-files=all)"
 test "$(git rev-parse HEAD)" = "$source_commit"
 test "$(git rev-parse 'HEAD^{tree}')" = "$source_tree"
 test "$remote_main" = "$source_commit"
+test "$(gh run list --commit "$source_commit" --workflow check.yml --limit 1 --json headSha --jq '.[0].headSha')" = "$source_commit"
+test "$(gh run list --commit "$source_commit" --workflow check.yml --limit 1 --json status --jq '.[0].status')" = "completed"
+test "$(gh run list --commit "$source_commit" --workflow check.yml --limit 1 --json conclusion --jq '.[0].conclusion')" = "success"
 npm whoami
 ```
 
@@ -76,17 +81,17 @@ npm whoami
 
 ```bash
 source_commit="$(sed -n 's/^- source_commit: //p' dist/RELEASE_MANIFEST.md)"
-local_shasum="$(node -e "const fs=require('node:fs'),c=require('node:crypto');process.stdout.write(c.createHash('sha1').update(fs.readFileSync('dist/openone-workflow-kit-1.0.0.tgz')).digest('hex'))")"
+local_shasum="$(node -e "const fs=require('node:fs'),c=require('node:crypto');process.stdout.write(c.createHash('sha1').update(fs.readFileSync('dist/openone-workflow-kit-1.1.0.tgz')).digest('hex'))")"
 remote_main="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
 test "$(git branch --show-current)" = "main"
 test -z "$(git status --porcelain=v1 --untracked-files=all)"
 test "$(git rev-parse HEAD)" = "$source_commit"
 test "$remote_main" = "$source_commit"
 npm publish --access public
-registry_version="$(npm view openone-workflow-kit@1.0.0 version)"
-registry_git_head="$(npm view openone-workflow-kit@1.0.0 gitHead)"
-registry_shasum="$(npm view openone-workflow-kit@1.0.0 dist.shasum)"
-test "$registry_version" = "1.0.0"
+registry_version="$(npm view openone-workflow-kit@1.1.0 version)"
+registry_git_head="$(npm view openone-workflow-kit@1.1.0 gitHead)"
+registry_shasum="$(npm view openone-workflow-kit@1.1.0 dist.shasum)"
+test "$registry_version" = "1.1.0"
 test "$registry_git_head" = "$source_commit"
 test "$registry_shasum" = "$local_shasum"
 ```
@@ -95,15 +100,15 @@ Registry 刚写入时允许做有上限的短暂重试；任何字段持续为�
 
 ```bash
 source_commit="$(sed -n 's/^- source_commit: //p' dist/RELEASE_MANIFEST.md)"
-test -z "$(git tag --list v1.0.0)"
-git tag -a v1.0.0 "$source_commit" -m "OpenOne Workflow Kit v1.0.0"
-git push origin v1.0.0
-gh release create v1.0.0 \
-  dist/openone-workflow-kit-1.0.0.tgz \
+test -z "$(git tag --list v1.1.0)"
+git tag -a v1.1.0 "$source_commit" -m "OpenOne Workflow Kit v1.1.0"
+git push origin v1.1.0
+gh release create v1.1.0 \
+  dist/openone-workflow-kit-1.1.0.tgz \
   dist/RELEASE_MANIFEST.md \
   --verify-tag \
-  --title "OpenOne Workflow Kit v1.0.0" \
-  --notes-file docs/releases/v1.0.0.md
+  --title "OpenOne Workflow Kit v1.1.0" \
+  --notes-file docs/releases/v1.1.0.md
 ```
 
 不得移动或覆盖已存在的 Tag，也不得尝试覆盖 npm 中已存在的同版本。上述命令需要维护者明确授权后执行。
@@ -112,17 +117,17 @@ gh release create v1.0.0 \
 
 ```bash
 source_commit="$(sed -n 's/^- source_commit: //p' dist/RELEASE_MANIFEST.md)"
-local_shasum="$(node -e "const fs=require('node:fs'),c=require('node:crypto');process.stdout.write(c.createHash('sha1').update(fs.readFileSync('dist/openone-workflow-kit-1.0.0.tgz')).digest('hex'))")"
-test "$(npm view openone-workflow-kit@latest version)" = "1.0.0"
-test "$(npm view openone-workflow-kit@1.0.0 gitHead)" = "$source_commit"
-test "$(npm view openone-workflow-kit@1.0.0 dist.shasum)" = "$local_shasum"
-peeled_tag="$(git ls-remote --tags origin 'refs/tags/v1.0.0^{}' | awk '{print $1}')"
+local_shasum="$(node -e "const fs=require('node:fs'),c=require('node:crypto');process.stdout.write(c.createHash('sha1').update(fs.readFileSync('dist/openone-workflow-kit-1.1.0.tgz')).digest('hex'))")"
+test "$(npm view openone-workflow-kit@latest version)" = "1.1.0"
+test "$(npm view openone-workflow-kit@1.1.0 gitHead)" = "$source_commit"
+test "$(npm view openone-workflow-kit@1.1.0 dist.shasum)" = "$local_shasum"
+peeled_tag="$(git ls-remote --tags origin 'refs/tags/v1.1.0^{}' | awk '{print $1}')"
 test "$peeled_tag" = "$source_commit"
-test "$(gh release view v1.0.0 --json isDraft --jq '.isDraft')" = "false"
-test "$(gh release view v1.0.0 --json isPrerelease --jq '.isPrerelease')" = "false"
-test "$(gh release view v1.0.0 --json tagName --jq '.tagName')" = "v1.0.0"
-test "$(gh release view v1.0.0 --json assets --jq '[.assets[].name] | sort | join(",")')" = \
-  "RELEASE_MANIFEST.md,openone-workflow-kit-1.0.0.tgz"
+test "$(gh release view v1.1.0 --json isDraft --jq '.isDraft')" = "false"
+test "$(gh release view v1.1.0 --json isPrerelease --jq '.isPrerelease')" = "false"
+test "$(gh release view v1.1.0 --json tagName --jq '.tagName')" = "v1.1.0"
+test "$(gh release view v1.1.0 --json assets --jq '[.assets[].name] | sort | join(",")')" = \
+  "RELEASE_MANIFEST.md,openone-workflow-kit-1.1.0.tgz"
 test "$(gh run list --branch main --workflow check.yml --limit 1 --json headSha,status,conclusion --jq '.[0].headSha')" = "$source_commit"
 test "$(gh run list --branch main --workflow check.yml --limit 1 --json conclusion --jq '.[0].conclusion')" = "success"
 ```
@@ -138,6 +143,6 @@ test "$(gh run list --branch main --workflow check.yml --limit 1 --json conclusi
 - 检查 `dist/RELEASE_MANIFEST.md`。
 - 检查 tarball 内的每个文件。
 - 确认 directory publish 后 Registry 的 `gitHead` 等于 manifest `source_commit`，`dist.shasum` 等于本地已验证 tarball 的 SHA-1。
-- 确认 GitHub Release 同时包含 `openone-workflow-kit-1.0.0.tgz` 与 `RELEASE_MANIFEST.md` 两个证据资产。
+- 确认 GitHub Release 同时包含 `openone-workflow-kit-1.1.0.tgz` 与 `RELEASE_MANIFEST.md` 两个证据资产。
 - 检查 README、license、示例和安装脚本。
 - push、tag push、npm publish 等远程写入必须有维护者明确授权。

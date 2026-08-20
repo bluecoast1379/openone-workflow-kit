@@ -7,7 +7,7 @@ OpenOne Workflow Kit 可以进行本地验证和本地打包。远程发布需�
 | 决策 | 选项 | 当前建议 |
 | --- | --- | --- |
 | License | Apache-2.0 / MIT / proprietary | Apache-2.0 |
-| 发布渠道 | GitHub / npm / 内部包仓 / tarball | GitHub + npm + tarball（v1.0.0 已获当前任务授权） |
+| 发布渠道 | GitHub / npm / 内部包仓 / tarball | GitHub + npm + tarball（v1.1.0 已获当前任务授权） |
 | 贡献模型 | 关闭 / 仅 issue / 接收 PR / 需要 CLA | 接收 issue 和 PR 模板 |
 | 支持范围 | best-effort / paid / internal-only | best-effort |
 | 安全报告 | 私有邮箱 / GitHub private advisory / 内部渠道 | GitHub private advisory 或维护者私有渠道 |
@@ -16,7 +16,7 @@ OpenOne Workflow Kit 可以进行本地验证和本地打包。远程发布需�
 ## 首次外部试用建议
 
 - 使用 Apache-2.0。
-- 在 CI、tarball、Codex adapter conformance 和真实 `skills/list` 验收全部通过后，从 clean reviewed commit 的仓库目录发布 npm `1.0.0`；公开核对 Registry `gitHead` / `dist.shasum` 后，再创建同 commit 的不可变 Git tag `v1.0.0` 和对应 GitHub Release。
+- 在 CI、tarball、Codex adapter conformance 和真实 `skills/list` 验收全部通过后，从 clean reviewed commit 的仓库目录发布 npm `1.1.0`；公开核对 Registry `gitHead` / `dist.shasum` 后，再创建同 commit 的不可变 Git tag `v1.1.0` 和对应 GitHub Release。
 - GitHub Release 同时上传已验证 tgz 与 `RELEASE_MANIFEST.md`，让 source commit、source tree、npm 内容哈希和 Release 资产形成可复核证据链。
 - 接收 issue 和 PR，但要求脱敏。
 - 不承诺生产级支持。

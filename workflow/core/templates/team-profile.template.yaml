@@ -12,7 +12,7 @@ workspace_context:
     planning_language: "zh-CN"
     display_language: "zh-CN-first"
     language_policy: "Use Simplified Chinese by default for workflow communication, stage deliverables, status summaries, reviews, tests, release records, and retrospectives; preserve official names and technical terms in their original form."
-    terminology_policy: "Keep product names, brand names, code identifiers, commands, file paths, branch names, APIs, SDKs, frameworks, protocols, standards, error messages, and official English terms unchanged unless the user asks for localization."
+    terminology_policy: "Use plain Chinese for user-facing workflow concepts. Keep product names, code identifiers, commands, paths, APIs, SDKs, frameworks, protocols, standards, and exact error messages unchanged. Show internal workflow codes only in technical details."
 
 enabled_tools: []
 detected_tools: []
@@ -50,15 +50,16 @@ source_materials:
 repos: []
 
 branch_model:
-  type: "prod-main-development"
-  production_branch: "prod"
-  integration_branch: "main"
-  development_branch_base: "prod"
-  testing_branch: "main"
-  test_branch_policy: "Do not create a separate test branch for personal projects; main is the testing/integration branch."
-  release_flow: "Create development branches from current prod, develop locally on the development branch, merge completed work into main for testing, then promote main to prod for release."
-  feature_branch_rule: "Use feature/<short-name>, fix/<short-name>, or dev/<short-name> development branches created from prod; agent may create local branches, local commits, local tags, and local merges after scope and working tree checks."
+  type: "detected-or-repository-defined"
+  production_branch: "<detected-or-TODO>"
+  integration_branch: "<detected-or-TODO>"
+  development_branch_base: "<detected-or-TODO>"
+  testing_branch: "<detected-or-TODO>"
+  lightweight_branch_policy: "Inspect the current branch and dirty tree, then follow the repository's existing policy; do not require a new branch solely because the change is small."
+  strict_branch_policy: "Follow the explicitly detected or user-configured branch and release rules."
+  local_branch_creation: "Agent may create a local branch after scope and dirty-tree checks when the repository's existing policy requires one."
   worktree_dir: "_worktrees"
+  worktree_policy: "Use an isolated worktree only for real same-repository concurrent implementation."
 
 risk_policy:
   local_git_operations: "agent-allowed-after-scope-check"
@@ -73,19 +74,8 @@ risk_policy:
   auto_deploy_before_first_prod_release: "blocked"
   production_deployments: "manual-approval-required-until-guarded-auto-approved"
   database_writes: "manual-only"
-  config_writes: "manual-only"
-  high_risk_files:
-    - "ci/**"
-    - "cd/**"
-    - "deploy/**"
-    - "*.env*"
-    - "application*.yml"
-    - "application*.yaml"
-    - "bootstrap*.yml"
-    - "bootstrap*.yaml"
-    - "pom.xml"
-    - "package.json"
-    - "lockfiles"
+  production_config_writes: "explicit-user-authorization-required"
+  high_risk_detection: "use workflow/policy.yaml and workflow/core/tools/resolve-policy.cjs"
 
 workflow:
   features_dir: "features"
@@ -94,11 +84,16 @@ workflow:
   standards_dir: "workflow/standards"
   constitution: "workflow/constitution.md"
   core_dir: "workflow/core"
+  policy: "workflow/policy.yaml"
   adapters_dir: "workflow/adapters"
-  require_stage_gate_for_code: true
-  require_feature_branch_for_code: true
-  complexity_tiers: "S/M/L"
-  definition_gate: "frozen-contract-with-lint-required-for-m-l; starred-mini-contract-for-s"
-  done_verdict: "all-blocking-oracles-pass-or-user-waived"
-  same_repo_parallel_policy: "worktree-required-after-implementation-stage"
+  implementation_entry: "04/04A/04B/deliver-until-done"
+  lightweight_start_condition: "user-requested local change with clear scope and acceptance items"
+  strict_start_condition: "confirmed completion standard and completed pre-change checks"
+  branch_check: "always-inspect; lightweight-follows-existing-repo-policy; strict-follows-explicit-profile"
+  complexity_display: "lightweight-change/standard-change/high-risk-change"
+  legacy_complexity_codes: "S/M/L (technical compatibility only)"
+  delivery_profiles: "adaptive/strict"
+  definition_gate: "strict-requires-confirmed-completion-standard; adaptive-low-risk-uses-in-request-scope-and-acceptance-items"
+  done_verdict: "all-required-acceptance-items-pass-or-user-confirmed-exception"
+  same_repo_parallel_policy: "worktree-required-only-for-real-concurrent-implementation"
   business_review_cadence: "weekly-metrics, monthly-strategy, quarterly-positioning"

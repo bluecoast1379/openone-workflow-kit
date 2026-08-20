@@ -1,45 +1,41 @@
-# Acceptance Oracle Tracker
+# 验收结果跟踪
 
 ## Purpose
 
-Make "done" a machine-checkable verdict instead of a feeling: every acceptance criterion is an oracle bound to a reproducible verification method, tracked through an explicit state machine. Declaring completion means all blocking oracles are PASS (or user-confirmed WAIVED) — nothing else counts.
+让“已完成”有可重复的证据：每个验收项绑定验证方法，真实执行后记录结果；相关代码又改动时，必须重新验证。
 
 ## Sources
 
-- `features/{feature}/00-完成合同.md` oracle table
-- `features/{feature}/交付至完成.md` or `07-测试执行.md` execution evidence
-- Local test/build/browser/manual-check outputs
+- 完整检查：`features/{feature}/00-完成合同.md` 中的验收项表
+- 轻量处理：当前任务中已确认的验收项
+- 本地测试、构建、运行态、浏览器或人工检查结果
 
-## Oracle Format
+## 验收项必填内容
 
-| 字段 | 要求 |
+| 内容 | 要求 |
 | --- | --- |
-| ID | `O-###`，稳定不复用 |
-| 验收标准 | EARS（WHEN/WHILE/IF…THEN/WHERE + SHALL）或 Given/When/Then；绑定数字或可观察行为 |
-| 验证方法 | auto：可复现命令/脚本/测试名；manual：编号步骤 + 明确判定标准 |
-| 类型 | auto / manual（auto 优先；manual 用于体验直觉与无法自动化的检查） |
-| blocking | 是/否；发布准入只看 blocking 集合 |
-| 状态 | NOT_RUN / PASS / FAIL / STALE / WAIVED |
-| 证据 | 命令输出、退出码、截图路径、日志片段；manual 附执行人与时间 |
+| ID | 稳定且不复用 |
+| 验收标准 | 包含数字或可观察行为 |
+| 怎样验证 | 可重复命令，或带步骤和判定标准的人工检查 |
+| 方式 | 自动 / 人工（能自动时优先自动） |
+| 必须通过 | 是 / 否；合并或发布前必须项不能留在未检查或未通过 |
+| 结果 | 未检查 / 已通过 / 未通过 / 改动后需重查 / 已确认跳过 |
+| 证据 | 命令、退出码、关键输出、截图路径或日志片段；人工检查附执行人与时间 |
 
-## State Machine
+## 结果规则
 
-- 初始一律 `NOT_RUN`；只有真实执行过验证方法才能进入 `PASS` 或 `FAIL`。
-- `PASS` 之后，其覆盖的代码或配置再次变更 → 立即置 `STALE`，必须复验；`STALE` 不等于 `PASS`。
-- `WAIVED` 只能由用户书面确认产生，必须记录理由与风险；agent 不得自我豁免。
-- 状态只能由 `/交付至完成` 或 `/07-测试执行` 翻转，且逐次附证据；其他阶段只读。
-- 冻结后不得修改标准、阈值、blocking 标记或删除 Oracle；确需变更走合同修订记录 + 用户确认。
+- 初始为“未检查”。只有真实运行过约定方法，才能记为“已通过”或“未通过”。
+- 已通过后，验收项覆盖的代码或配置再次变更，结果立即改为“改动后需重查”。
+- “已确认跳过”只能来自用户的明确确认，必须记录理由和风险；agent 不得自行设置。
+- 完整检查中，只由 `/交付至完成` 或 `/07-测试执行` 更新验收结果并附证据；其他步骤只读。
+- 完成标准已确认后，不得静默改标准、阈值、“必须通过”标记或删除验收项。
 
-## Verdict Rules
+## 完成判定
 
-- 宣布完成 = blocking 全部 `PASS` 或 `WAIVED`（带确认）；存在 `NOT_RUN`/`FAIL`/`STALE` 的 blocking 项时，任何"基本完成/差不多了"表述都是违规。
-- 非 blocking 项不阻塞发布，但终态汇总必须如实列出其状态。
-- 无法执行的验证方法（缺环境/凭据）记为 `NOT_RUN` + 精确阻塞说明，不得凭推测标 `PASS`。
+- 所有“必须通过”的验收项均为“已通过”或“已确认跳过”时，才能宣布完成。
+- 非必须项不阻止完成，但终点摘要必须如实列出。
+- 缺环境或凭据而无法执行时，保持“未检查”并输出明确卡点，不得根据推测标记通过。
 
-## Failure Modes
+## 内部兼容详情
 
-- 把"代码写完了"当成 PASS 的证据。
-- 复用旧运行结果糊弄复验（证据必须对应当前 commit）。
-- 修改测试或阈值使其通过，而不是修复实现。
-- manual Oracle 没有步骤和判定标准，执行时临场发挥。
-- STALE 项在发布前被悄悄当作 PASS 统计。
+文件名 `acceptance-oracle-tracker.md` 为兼容保留。机器字段映射：验收项=`Oracle`，必须通过=`blocking`，未检查=`NOT_RUN`，已通过=`PASS`，未通过=`FAIL`，改动后需重查=`STALE`，已确认跳过=`WAIVED`。这些代码只在技术详情中展示。

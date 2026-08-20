@@ -13,11 +13,11 @@ Allow agents to handle routine local Git mechanics for personal projects without
 
 ## Agent-Allowed Local Actions
 
-- Create a local branch from `prod`, usually `feature/<short-name>`, `fix/<short-name>`, or `chore/<short-name>`.
+- Create a local branch from the repository's detected or configured base branch, using its existing naming convention.
 - Create an isolated local worktree for same-repo parallel implementation.
 - Stage and commit scoped changes after review and verification.
 - Create local annotated tags such as `vX.Y.Z` after `/08-发布准备` records version evidence.
-- Merge a completed development branch into local `main`, and promote local `main` into local `prod`, when tests and release readiness are recorded.
+- Perform local merges that follow the repository's detected or configured integration and release flow, when verification and release readiness are recorded.
 
 ## Actions Requiring Explicit User Authorization
 
@@ -38,4 +38,4 @@ Allow agents to handle routine local Git mechanics for personal projects without
 - Treating "personal project" as permission to push or deploy without authorization.
 - Staging unrelated user changes because the working tree was not inspected.
 - Creating tags before version, artifact, and release notes are aligned.
-- Using a `test` branch when `main` is already the personal integration branch.
+- Guessing `prod`, `main`, or `test` when the repository's branch roles are unknown.

@@ -1,6 +1,6 @@
 # Capabilities
 
-Capabilities 是可复用检查能力。不同工具可以把它们实现成 prompt、规则、hooks、checklist 或 subagent；实现形态可以不同，但核心阻断规则不能被削弱。
+Capabilities 是可复用检查能力。不同工具可以把它们实现成 prompt、规则、hooks、checklist 或 subagent。轻量处理只启用与当前风险直接相关的检查；完整检查再启用完整集合。远程授权、真实证据、未提交改动保护和真实并行隔离不会因处理方式而放宽。
 
 ## 能力等级
 
@@ -24,13 +24,13 @@ Capabilities 是可复用检查能力。不同工具可以把它们实现成 pro
 
 | 分层 | Capability | 用途 | 阶段 |
 | --- | --- | --- | --- |
-| essential | [definition-lint](./definition-lint.md) | 冻结前按八维度检查完成合同，配按项目类型的定义面试题库 | `/定义完成` |
-| essential | [acceptance-oracle-tracker](./acceptance-oracle-tracker.md) | 验收 Oracle 状态机：绑定验证方法、证据与 STALE 复验，完成=blocking 全绿 | `/定义完成`, `/07`, `/交付至完成`, `/08` |
-| essential | [branch-gatekeeper](./branch-gatekeeper.md) | 阻止在错误分支或错误阶段修改业务代码 | `/04` |
+| essential | [definition-lint](./definition-lint.md) | 完整检查中，确认前按八项检查完成标准 | `/定义完成` |
+| essential | [acceptance-oracle-tracker](./acceptance-oracle-tracker.md) | 绑定验收方法、真实证据和改动后重查 | `/定义完成`, `/07`, `/交付至完成`, `/08` |
+| essential | [branch-gatekeeper](./branch-gatekeeper.md) | 写入前检查实现授权、仓库分支规则和未提交改动 | `/04`, `/04A`, `/04B`, `/交付至完成` |
 | essential | [release-safety-checker](./release-safety-checker.md) | 对比发布候选与生产基线，防止范围漂移 | `/05`, `/07`, `/08`, `/09` |
 | essential | [prd-code-diff-checker](./prd-code-diff-checker.md) | 对比产品意图、技术方案与真实 diff | `/05` |
 | essential | [contract-tracer](./contract-tracer.md) | 追踪跨服务、跨层或前后端契约变更 | `/03`, `/05` |
-| recommended | [worktree-isolator](./worktree-isolator.md) | 同仓多需求进入实现后强制 worktree 隔离 | `/04` |
+| recommended | [worktree-isolator](./worktree-isolator.md) | 仅在同仓真实并行实现时使用独立开发目录 | `/04`, `/交付至完成` |
 | recommended | [repo-baseline-scanner](./repo-baseline-scanner.md) | 记录分支、dirty 状态和事实来源降级 | `/03` |
 | recommended | [impact-scope-analyzer](./impact-scope-analyzer.md) | 扫描仓库、API、UI、数据、配置和测试影响面 | `/03` |
 | recommended | [security-reviewer](./security-reviewer.md) | 审查凭证、鉴权、隐私、ACL、配置和审计风险 | `/05` |

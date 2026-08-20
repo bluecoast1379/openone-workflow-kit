@@ -15,6 +15,6 @@ The assets in this directory are deterministic, reviewable SVG source files crea
 1. Validate syntax with `xmllint --noout docs/assets/*.svg`.
 2. Run `npm run check` to verify dimensions, file-size limits, accessibility elements, and SHA-256 checksums against `visual-manifest.json`.
 3. Render the SVGs with a standards-compliant browser for visual review.
-4. Export `social-preview.svg` to an untracked 1280×640 `social-preview.png` before uploading it in GitHub repository settings; the SVG keeps all critical content inside a 64 px safe area. The PNG checksum is recorded in `visual-manifest.json`, while the binary stays outside the source package.
+4. Export `social-preview.svg` to an untracked 1280×640 `social-preview.png` before uploading it in GitHub repository settings; the SVG keeps all critical content inside a 64 px safe area. The manifest records the renderer version and PNG checksum used for the reviewed export, while the binary stays outside the source package.
 
 If any SVG changes, update its checksum in `visual-manifest.json` and repeat both machine and visual QA.
