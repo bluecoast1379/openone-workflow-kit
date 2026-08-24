@@ -2,29 +2,24 @@
 
 ## Goal
 
-工作流状态: 汇总 features 下所有需求的阶段状态、阻塞和下一步；工作区存在商业化容器时，一并汇总 business 下各产品的商业化阶段、PMF 判定和下轮复盘时间。
+查看进度：用白话汇总当前改动和商业化工作的进度、明确卡点和最近可执行动作。
 
 ## Required Inputs
 
-- `AGENTS.md`
-- `workflow/team-profile.yaml`
-- Previous stage documents under workspace-level `features/{feature}/`
-- Workspace-level `business/{product}/00-商业化状态.md`（如存在）
-- Local code, local docs, and user-provided source materials listed in team-profile
+- 默认只读取 `features/*/00-工作流状态.md` 与 `business/*/00-商业化状态.md`
+- 仅当某个状态文件缺失、自相矛盾或用户要求查看详情时，才定向读取该项目的相关阶段文档。
+- 不因为汇总进度而读取业务代码、完整 AGENTS 手册或所有命令文件。
 
 ## Execution Rules
 
-- Read local facts before writing conclusions.
-- Distinguish verified facts, design intent, assumptions, and missing evidence.
-- 默认使用简体中文展示工作流沟通和阶段产物；专有名词、产品名、品牌名、代码标识符、命令、文件路径、分支名、API、SDK、框架、协议、标准、错误信息和官方英文术语保留原文。
-- Do not claim tests, builds, screenshots, deployments, or reviews passed unless they were actually executed.
-- Local branch creation, commit, tag, and local merge may be executed by the agent for personal projects after scope and working-tree checks. Remote Git refresh, push, release, deployment, database write, and production config write require explicit user authorization.
-- This stage does not authorize business code changes unless the current command is an implementation command and all gates pass.
-- 汇总必须分别呈现研发轨（features）和商业化轨（business）两张状态表；只统计真实存在的容器，不虚构进度。
+- 只汇总真实存在的记录，不推测不存在的进度。
+- 默认显示中文结果：未检查 / 已通过 / 未通过 / 改动后需重查 / 已确认跳过。内部状态码只在用户要求技术详情时展示。
+- 轻量处理没有持久化状态文件是正常情况，不将其误报为缺失或未开始。
+- 明确卡点必须说明缺什么、为什么需要和怎样解除；没有卡点时不生成空占位。
+- 本命令只读，不修改代码、文档、分支或远程状态。
 
 ## Required Outputs
 
-- 输出研发轨汇总：每个 feature 的当前阶段、状态、复杂度档位、完成合同状态（草稿/已冻结）、blocking Oracle 进度（x/y PASS）、待澄清项数、阻塞和下一步。
-- 工作区存在 `business/` 时输出商业化轨汇总：每个产品的当前阶段、PMF 判定、待授权对外动作数量和下轮 B9 复盘时间。
-- 标出两轨间待办衔接：待回流研发轨的营销工程需求、待进入 B9 的增长信号。
-- Record unresolved questions and evidence gaps explicitly.
+- 研发改动：改动名称、处理方式、当前进度、验收进度、待确认项、明确卡点和最近动作。
+- 商业化工作：产品、当前进度、关键假设的证据状态、正在进行的渠道尝试、下次复盘时间和明确卡点。
+- 默认不展开文件路径、机器 ID 和内部代码；用户要求技术详情时再附上。

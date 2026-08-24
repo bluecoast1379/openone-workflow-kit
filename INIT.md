@@ -7,9 +7,10 @@
 1. 把 starter kit 放在目标产品仓库之外。
 2. 打开目标产品工作区根目录。
 3. 从目标根目录运行初始化器。
-4. 检查生成的 `workflow/team-profile.yaml`。
-5. 如果存在 `workflow/INITIALIZATION_QUESTIONS.md`，补齐缺失资料。
-6. 如需调整工具列表，重新运行初始化器。
+4. 检查生成的 `workflow/team-profile.yaml` 和 `workflow/policy.yaml`。
+5. 新安装默认“自动选择”；如希望每次都走完整流程，把策略改为 `strict`（完整检查）。
+6. 如果存在 `workflow/INITIALIZATION_QUESTIONS.md`，补齐缺失资料。
+7. 如需调整工具列表，重新运行初始化器。
 
 ## 本地路径安装
 
@@ -52,6 +53,8 @@ openone-workflow-init --target . --tools codex,claude,cursor --upgrade
 
 如果已有文件会被覆盖，初始化器默认写出 `.agent-workflow-new` 文件；只有显式传入 `--force` 才会覆盖。
 
+旧工作区升级前没有 `workflow/policy.yaml` 时，初始化器会生成默认值为 `strict` 的策略，继续使用完整检查，避免静默放宽原来的要求。已有策略即使配合 `--force` 升级也会保留，不会覆盖用户设置。
+
 ## 安全边界
 
 初始化器不会：
@@ -73,6 +76,7 @@ openone-workflow-init --target . --tools codex,claude,cursor --upgrade
 正式用于需求交付前，请先确认：
 
 - 已检查 `workflow/team-profile.yaml`；
+- 已检查 `workflow/policy.yaml`，确认使用“自动选择”或“完整检查”；
 - 如存在 `workflow/INITIALIZATION_QUESTIONS.md`，已补齐待补资料；
 - 选中的工具 adapter 已生成；
 - 已有文件没有被意外覆盖；

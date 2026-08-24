@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-labelledby="title desc">
-  <title id="title">OpenOne Workflow Kit dual-track architecture</title>
-  <desc id="desc">A five-stage evidence flow connects local context, definition, execution, verification, and learning. Delivery and commercialization tracks share completion contracts, gates, and reusable knowledge.</desc>
+  <title id="title">OpenOne Workflow Kit 工作方式</title>
+  <desc id="desc">五个步骤连接本地现状、完成标准、实施、检查和复盘；研发与商业化工作共享项目规则和可复用知识。</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#070B14"/>
@@ -23,89 +23,89 @@
   <circle cx="120" cy="850" r="300" fill="#FB7185" fill-opacity="0.06"/>
 
   <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
-    <text x="72" y="78" fill="#F59E0B" font-size="18" font-weight="700" letter-spacing="1.6">DUAL-TRACK ARCHITECTURE</text>
-    <text x="72" y="136" fill="#F8FAFC" font-size="48" font-weight="700" letter-spacing="-1.5">一套 Core，两条轨道，同一个证据闭环</text>
-    <text x="72" y="176" fill="#A7B0C0" font-size="20">工具只是 adapter；本地事实、完成合同、Oracle 和复盘知识才是可迁移的核心。</text>
+    <text x="72" y="78" fill="#F59E0B" font-size="18" font-weight="700" letter-spacing="1.6">研发与商业化工作</text>
+    <text x="72" y="136" fill="#F8FAFC" font-size="48" font-weight="700" letter-spacing="-1.5">一套规则，两类工作，检查强度跟随风险</text>
+    <text x="72" y="176" fill="#A7B0C0" font-size="20">工具只负责接入；本地事实、完成标准、检查结果和复盘知识可以长期复用。</text>
 
     <g transform="translate(72 230)">
-      <text x="0" y="32" fill="#F59E0B" font-size="20" font-weight="700">研发轨 · DELIVERY</text>
-      <text x="0" y="252" fill="#FB7185" font-size="20" font-weight="700">商业化轨 · GROWTH</text>
+      <text x="0" y="32" fill="#F59E0B" font-size="20" font-weight="700">研发工作</text>
+      <text x="0" y="252" fill="#FB7185" font-size="20" font-weight="700">商业化工作</text>
 
       <path d="M222 107H1190" fill="none" stroke="#F59E0B" stroke-opacity="0.64" stroke-width="3" marker-end="url(#arrowAmber)"/>
       <path d="M222 327H1190" fill="none" stroke="#FB7185" stroke-opacity="0.6" stroke-width="3" marker-end="url(#arrowCoral)"/>
 
       <g transform="translate(0 58)">
         <rect width="216" height="118" rx="22" fill="#121B2A" stroke="#A7B0C0" stroke-opacity="0.22"/>
-        <text x="20" y="30" fill="#F59E0B" font-size="16" font-weight="700">01 · CONTEXT</text>
+        <text x="20" y="30" fill="#F59E0B" font-size="16" font-weight="700">01 · 了解现状</text>
         <text x="20" y="62" fill="#F8FAFC" font-size="21" font-weight="700">本地事实与边界</text>
-        <text x="20" y="89" fill="#A7B0C0" font-size="16">team-profile · specs</text>
+        <text x="20" y="89" fill="#A7B0C0" font-size="16">项目设置 · 已上线说明</text>
       </g>
       <g transform="translate(260 58)">
         <rect width="216" height="118" rx="22" fill="#F59E0B" fill-opacity="0.09" stroke="#F59E0B" stroke-opacity="0.48"/>
-        <text x="20" y="30" fill="#F59E0B" font-size="16" font-weight="700">02 · DEFINE</text>
-        <text x="20" y="62" fill="#F8FAFC" font-size="21" font-weight="700">需求与完成合同</text>
-        <text x="20" y="89" fill="#A7B0C0" font-size="16">PRD · architecture · Oracle</text>
+        <text x="20" y="30" fill="#F59E0B" font-size="16" font-weight="700">02 · 明确标准</text>
+        <text x="20" y="62" fill="#F8FAFC" font-size="21" font-weight="700">需求与完成标准</text>
+        <text x="20" y="89" fill="#A7B0C0" font-size="16">目标 · 范围 · 验收项</text>
       </g>
       <g transform="translate(520 58)">
         <rect width="216" height="118" rx="22" fill="#F59E0B" fill-opacity="0.09" stroke="#F59E0B" stroke-opacity="0.48"/>
-        <text x="20" y="30" fill="#F59E0B" font-size="16" font-weight="700">03 · EXECUTE</text>
+        <text x="20" y="30" fill="#F59E0B" font-size="16" font-weight="700">03 · 完成修改</text>
         <text x="20" y="62" fill="#F8FAFC" font-size="21" font-weight="700">交付至完成</text>
-        <text x="20" y="89" fill="#A7B0C0" font-size="16">implement · review · test</text>
+        <text x="20" y="89" fill="#A7B0C0" font-size="16">修改 · 复查 · 测试</text>
       </g>
       <g transform="translate(780 58)">
         <rect width="216" height="118" rx="22" fill="#F59E0B" fill-opacity="0.09" stroke="#F59E0B" stroke-opacity="0.48"/>
-        <text x="20" y="30" fill="#F59E0B" font-size="16" font-weight="700">04 · VERIFY</text>
-        <text x="20" y="62" fill="#F8FAFC" font-size="21" font-weight="700">Blocking 全绿</text>
-        <text x="20" y="89" fill="#A7B0C0" font-size="16">evidence · release gate</text>
+        <text x="20" y="30" fill="#F59E0B" font-size="16" font-weight="700">04 · 检查结果</text>
+        <text x="20" y="62" fill="#F8FAFC" font-size="21" font-weight="700">必做检查通过</text>
+        <text x="20" y="89" fill="#A7B0C0" font-size="16">检查结果 · 发布条件</text>
       </g>
       <g transform="translate(1040 58)">
         <rect width="216" height="118" rx="22" fill="#121B2A" stroke="#A7B0C0" stroke-opacity="0.22"/>
-        <text x="20" y="30" fill="#F59E0B" font-size="16" font-weight="700">05 · LEARN</text>
-        <text x="20" y="62" fill="#F8FAFC" font-size="21" font-weight="700">回写行为真相</text>
-        <text x="20" y="89" fill="#A7B0C0" font-size="16">specs · retrospective</text>
+        <text x="20" y="30" fill="#F59E0B" font-size="16" font-weight="700">05 · 总结复盘</text>
+        <text x="20" y="62" fill="#F8FAFC" font-size="21" font-weight="700">更新已上线说明</text>
+        <text x="20" y="89" fill="#A7B0C0" font-size="16">功能说明 · 复盘总结</text>
       </g>
 
       <g transform="translate(0 278)">
         <rect width="216" height="118" rx="22" fill="#121B2A" stroke="#A7B0C0" stroke-opacity="0.22"/>
-        <text x="20" y="30" fill="#FB7185" font-size="16" font-weight="700">01 · CONTEXT</text>
+        <text x="20" y="30" fill="#FB7185" font-size="16" font-weight="700">01 · 了解现状</text>
         <text x="20" y="62" fill="#F8FAFC" font-size="21" font-weight="700">产品与市场证据</text>
-        <text x="20" y="89" fill="#A7B0C0" font-size="16">baseline · evidence grade</text>
+        <text x="20" y="89" fill="#A7B0C0" font-size="16">现状资料 · 证据质量</text>
       </g>
       <g transform="translate(260 278)">
         <rect width="216" height="118" rx="22" fill="#FB7185" fill-opacity="0.08" stroke="#FB7185" stroke-opacity="0.45"/>
-        <text x="20" y="30" fill="#FB7185" font-size="16" font-weight="700">02 · DEFINE</text>
-        <text x="20" y="62" fill="#F8FAFC" font-size="21" font-weight="700">定位、PMF 与 ICP</text>
-        <text x="20" y="89" fill="#A7B0C0" font-size="16">value · model · journey</text>
+        <text x="20" y="30" fill="#FB7185" font-size="16" font-weight="700">02 · 明确方向</text>
+        <text x="20" y="62" fill="#F8FAFC" font-size="21" font-weight="700">定位与目标客户</text>
+        <text x="20" y="89" fill="#A7B0C0" font-size="16">价值 · 收入 · 购买过程</text>
       </g>
       <g transform="translate(520 278)">
         <rect width="216" height="118" rx="22" fill="#FB7185" fill-opacity="0.08" stroke="#FB7185" stroke-opacity="0.45"/>
-        <text x="20" y="30" fill="#FB7185" font-size="16" font-weight="700">03 · EXECUTE</text>
+        <text x="20" y="30" fill="#FB7185" font-size="16" font-weight="700">03 · 制定计划</text>
         <text x="20" y="62" fill="#F8FAFC" font-size="21" font-weight="700">渠道与预算策略</text>
-        <text x="20" y="89" fill="#A7B0C0" font-size="16">funnel · content · budget</text>
+        <text x="20" y="89" fill="#A7B0C0" font-size="16">渠道 · 内容 · 预算</text>
       </g>
       <g transform="translate(780 278)">
         <rect width="216" height="118" rx="22" fill="#FB7185" fill-opacity="0.08" stroke="#FB7185" stroke-opacity="0.45"/>
-        <text x="20" y="30" fill="#FB7185" font-size="16" font-weight="700">04 · VERIFY</text>
+        <text x="20" y="30" fill="#FB7185" font-size="16" font-weight="700">04 · 查看反馈</text>
         <text x="20" y="62" fill="#F8FAFC" font-size="21" font-weight="700">衡量漏斗信号</text>
-        <text x="20" y="89" fill="#A7B0C0" font-size="16">CAC · conversion · signal</text>
+        <text x="20" y="89" fill="#A7B0C0" font-size="16">获客成本 · 转化 · 反馈</text>
       </g>
       <g transform="translate(1040 278)">
         <rect width="216" height="118" rx="22" fill="#121B2A" stroke="#A7B0C0" stroke-opacity="0.22"/>
-        <text x="20" y="30" fill="#FB7185" font-size="16" font-weight="700">05 · LEARN</text>
+        <text x="20" y="30" fill="#FB7185" font-size="16" font-weight="700">05 · 调整策略</text>
         <text x="20" y="62" fill="#F8FAFC" font-size="21" font-weight="700">策略复盘</text>
-        <text x="20" y="89" fill="#A7B0C0" font-size="16">scale · hold · cut</text>
+        <text x="20" y="89" fill="#A7B0C0" font-size="16">加大 · 保持 · 停止</text>
       </g>
 
       <g transform="translate(0 454)">
         <rect width="1256" height="126" rx="26" fill="#101827" stroke="url(#accent)" stroke-opacity="0.76" stroke-width="2"/>
-        <text x="28" y="38" fill="#F8FAFC" font-size="22" font-weight="700">Shared governance layer · 共享闸门</text>
-        <text x="28" y="72" fill="#A7B0C0" font-size="18">完成合同 · Definition Lint · Acceptance Oracle · 分支/发布准入 · 证据分级 · 本地隐私边界</text>
-        <text x="28" y="102" fill="#A7B0C0" font-size="17">workflow/core 保持工具无关；adapters 只负责把同一套决策接入当前 AI 工具。</text>
+        <text x="28" y="38" fill="#F8FAFC" font-size="22" font-weight="700">共享项目规则</text>
+        <text x="28" y="72" fill="#A7B0C0" font-size="18">完成标准 · 验收项 · 开始与发布条件 · 检查结果 · 本地隐私边界</text>
+        <text x="28" y="102" fill="#A7B0C0" font-size="17">所有 AI 工具读取同一套规则；普通任务只加载当前阶段真正需要的内容。</text>
       </g>
 
       <g transform="translate(0 590)">
         <rect width="1256" height="68" rx="22" fill="url(#accent)" fill-opacity="0.13"/>
-        <text x="628" y="43" fill="#F8FAFC" font-size="19" font-weight="700" text-anchor="middle">Local truth → explicit contract → evidence-backed delivery → reusable knowledge</text>
+        <text x="628" y="43" fill="#F8FAFC" font-size="19" font-weight="700" text-anchor="middle">本地现状 → 清楚的完成标准 → 经检查的结果 → 可复用知识</text>
       </g>
     </g>
   </g>

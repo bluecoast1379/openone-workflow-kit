@@ -98,27 +98,28 @@ branch_model:
   worktree_dir: "_worktrees"
 
 risk_policy:
-  remote_git_operations: "manual-only"
-  branch_creation: "manual-only"
-  push_and_release: "manual-only"
-  database_writes: "manual-only"
-  config_writes: "manual-only"
-  high_risk_files:
-    - "ci/**"
-    - "deploy/**"
-    - "*.env*"
-    - "infra/**"
-    - "package.json"
-    - "lockfiles"
-    - "openapi/**"
+  local_git_operations: "agent-allowed-after-scope-check"
+  branch_creation: "agent-allowed-after-scope-check"
+  remote_git_operations: "explicit-user-authorization-required"
+  push_and_release: "explicit-user-authorization-required"
+  database_writes: "explicit-user-authorization-required"
+  production_config_writes: "explicit-user-authorization-required"
+  local_project_config_writes: "agent-allowed-after-scope-check"
+  high_risk_detection: "use workflow/policy.yaml and workflow/core/tools/resolve-policy.cjs"
 
 workflow:
+  policy: "workflow/policy.yaml"
   features_dir: "features"
+  business_dir: "business"
+  specs_dir: "specs"
+  standards_dir: "workflow/standards"
+  constitution: "workflow/constitution.md"
   core_dir: "workflow/core"
   adapters_dir: "workflow/adapters"
-  require_stage_gate_for_code: true
-  require_feature_branch_for_code: true
-  same_repo_parallel_policy: "worktree-required-after-implementation-stage"
+  processing_profile_source: "workflow/policy.yaml"
+  user_facing_profiles: "自动选择 / 完整检查；低风险时为轻量处理"
+  completion_language: "完成标准 / 验收项 / 检查结果 / 明确卡点"
+  same_repo_parallel_policy: "use an isolated worktree only for real concurrent implementation"
 
 # Recommended capabilities to adopt first for a SaaS to B product.
 enabled_capabilities:

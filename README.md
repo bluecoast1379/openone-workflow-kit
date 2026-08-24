@@ -7,51 +7,138 @@
 
 ![OpenOne Workflow Kit：独立开发者的研发与商业化双轨工作流](./docs/assets/hero.svg)
 
-面向独立开发者的工具无关 agent 工作流：把产品研发和商业化放进同一个可验证闭环。核心不是更长的 prompt，而是把“什么叫完成”编译成可冻结的《完成合同》：**blocking 验收 Oracle 全部 PASS，才能宣布完成。**
+OpenOne Workflow Kit 是给独立开发者使用的本地工作助手。你只要说清想改什么，agent 会根据风险选择合适的处理方式：小改动直接修改并做针对性检查，系统性或高风险改动先确认完成标准，再进行完整验证。
 
-- **研发轨**：需求 → 完成合同 → 实现/审查/测试 → 发布 → 复盘。
-- **商业化轨**：定位 → 商业模式/PMF/ICP → 渠道/预算 → 策略复盘。
-- **本地优先**：只读本地上下文并生成工作流文件；不上传资料，不自动 push、发布、部署或写生产数据。
+- **少走流程**：文案、bug 修复和单文件小改默认走短路径。
+- **风险越高，检查越完整**：接口、数据、权限、发布配置等改动会自动提高检查强度。
+- **结果说人话**：默认只说明改了什么、检查结果、剩余风险和是否需要你确认。
+- **本地优先**：初始化器只读取本地资料并生成本地文件，不自动上传、推送、发布、部署或写入生产数据。
+- **研发与商业化一起管理**：既能完成产品改动，也能维护定位、客户、渠道、预算和复盘。
+
+本轮轻量化改造的范围和验收方式见[开发任务清单](./docs/development-task-checklist.md)。
 
 ## 如何选择
 
-| 项目 | 服务对象 | 选它的理由 |
+| 项目 | 适合谁 | 主要用途 |
 | --- | --- | --- |
-| [open-workflow-kit](https://github.com/bluecoast1379/open-workflow-kit) | AI Coding 团队 | 需要完成合同、证据账本和跨工具交付治理 |
-| [business-agent](https://github.com/bluecoast1379/business-agent) | 企业业务 Agent | 需要从业务规划、网关脚手架到评测与运行边界 |
-| **openone-workflow-kit（本项目）** | **独立开发者** | **需要个人研发 + 商业化双轨，同时控制流程税** |
+| [open-workflow-kit](https://github.com/bluecoast1379/open-workflow-kit) | 使用 AI Coding 的团队 | 多人协作、交付证据和跨工具管理 |
+| [business-agent](https://github.com/bluecoast1379/business-agent) | 构建企业业务 Agent 的团队 | 业务规划、服务入口、评测与运行边界 |
+| **openone-workflow-kit（本项目）** | **独立开发者** | **个人研发与商业化管理，并让流程强度跟随风险** |
+
+## 第一次使用
+
+前置条件是 Node.js 18+。在项目目录执行：
+
+```bash
+npx --yes --package openone-workflow-kit@1.1.0 openone-workflow-init \
+  --target . --tools codex,claude,cursor --yes
+```
+
+`1.1.0` 包含风险自适应处理、白话入口和更短的固定上下文。需要复现旧版行为时，可使用不可变的 `v1.0.0` Tag 或 npm `1.0.0`。
+
+初始化后可以直接用自然语言告诉 agent：
+
+> 把设置页的保存按钮文案改成“保存更改”，完成后帮我检查一下。
+
+或：
+
+> 给账号删除功能增加二次确认。这会影响数据安全，请按完整方式处理，先和我确认完成标准。
+
+你不需要记住一串命令。agent 会判断影响范围和风险；只有范围、风险或外部操作需要你决定时才会提问。
 
 ## 30 秒 Quick Demo
 
-前置条件：Node.js 18+；首次下载时间不计入 30 秒。在一个空目录中执行：
+首次下载时间不计入 30 秒。在空目录中执行：
 
 ```bash
 mkdir openone-demo && cd openone-demo
-npx --yes --package openone-workflow-kit@1.0.0 openone-workflow-init --target . --tools codex,cursor --yes
-node -e "for (const f of ['workflow/team-profile.yaml','AGENTS.md']) require('node:fs').accessSync(f); console.log('OpenOne ready')"
+npx --yes --package openone-workflow-kit@1.1.0 openone-workflow-init --target . --tools codex,cursor --yes
+node -e "for (const f of ['workflow/team-profile.yaml','workflow/policy.yaml','AGENTS.md']) require('node:fs').accessSync(f); console.log('OpenOne ready')"
 ```
 
-预期结果：终端输出 `OpenOne ready`，并生成 `workflow/team-profile.yaml`、`workflow/core/`、`AGENTS.md` 与所选工具 adapter。如果 npm 网络不可用，参考 [Git 或本地 tarball 安装](./docs/shareable-install.md)。
+预期结果是终端输出 `OpenOne ready`。如果 npm 网络不可用，参考 [Git 或本地 tarball 安装](./docs/shareable-install.md)。
 
-![OpenOne Workflow Kit 30 秒体验：创建目录、运行 v1.0.0、验证产物](./docs/assets/quick-demo.svg)
+![OpenOne Workflow Kit 30 秒体验：创建目录、运行 v1.1.0、验证产物](./docs/assets/quick-demo.svg)
 
-## 架构：一套 Core，两条轨道
+## 一套规则，两类工作
 
-![OpenOne Workflow Kit 双轨架构：上下文、定义、执行、验证与复盘共享治理闸门](./docs/assets/architecture.svg)
+![OpenOne Workflow Kit 架构：本地资料、研发与商业化工作共享项目规则和检查方式](./docs/assets/architecture.svg)
 
-1. `workflow/team-profile.yaml` 记录本地事实与路径；`specs/` 记录已发布行为真相。
-2. `workflow/core/` 提供工具无关的阶段、完成合同、闸门、模板和 Oracle 能力。
-3. `workflow/adapters/` 为 Claude、Codex、Cursor、Copilot、CodeBuddy、Kiro 和 Trae 生成薄入口；共享 core，但不承诺工具体验完全相同。
+1. `workflow/team-profile.yaml` 记录项目路径和本地事实，`workflow/policy.yaml` 记录默认处理方式。
+2. `workflow/core/` 提供工具无关的阶段规则、完成标准、验收方法和模板。
+3. 不同工具生成各自的本地入口，共享同一套基础规则。
 
-深入阅读：[定义完成指南](./docs/definition-of-done.md) · [双轨工作流设计](./docs/dual-track-workflow.md) · [v1.0.0 Release Notes](./docs/releases/v1.0.0.md)
+## 两种处理方式
 
-## 一键初始化
+### 自动选择
 
-从 npm 的不可变版本运行（Node.js 18+）：
+新安装默认使用自动选择。低风险任务走“轻量处理”，发现风险时自动增加准备和检查：
 
-```bash
-npx --yes --package openone-workflow-kit@1.0.0 openone-workflow-init --target . --tools codex,claude,cursor --yes
-```
+1. 明确这次会改什么。
+2. 集中完成修改。
+3. 先查看改动是否符合目标。
+4. 运行与改动直接相关的检查。
+5. 汇总结果和剩余风险。
+
+检查失败时，agent 最多进行两轮修复。仍未通过就会说明具体问题，不会无限重复。过程中不反复写进度文件，结束时统一记录一次。
+
+以下情况会自动改用“完整检查”：对外接口或数据结构变化、账号与权限、安全、数据迁移、持续集成与部署流程（CI/CD）、生产配置、跨仓修改、不可逆操作，以及准备合并或发布。
+
+### 完整检查
+
+完整检查适合系统性改动、高风险改动和发布前核验。agent 会先整理目标、范围、失败情况和验收方式，请你确认完成标准，再实施和全面检查。
+
+你可以随时明确说“这次做完整检查”。agent 不会自行降低你选择的检查强度。
+
+无论使用哪一种方式，远程推送、正式发布、部署、生产写入、付费投放和对外联系仍然需要你明确授权。
+
+## 初始化器会生成什么
+
+1. `workflow/team-profile.yaml`：记录项目路径、技术栈线索和缺失资料。
+2. `workflow/policy.yaml`：记录默认处理方式和自动升级条件。
+3. `workflow/core/`：提供各阶段的通用规则和模板。
+4. 各工具的本地入口，例如 Codex 的 `AGENTS.md` 与 `.agents/skills/`、Claude Code 的 `CLAUDE.md`、Cursor 的 `.cursor/`。
+5. 必要资料缺失时，非交互模式会生成 `workflow/INITIALIZATION_QUESTIONS.md`，供你稍后补充。
+
+初始化器不会执行远程 Git、构建部署、数据库写入或生产配置写入。生成后的工作助手可以在范围明确且目录状态安全时处理本地分支、提交、标签和合并；所有远程或生产动作继续等待你的明确授权。
+
+## 需要时再用阶段入口
+
+自然语言是默认入口。想明确指定阶段时，可以选择下面这些白话名称：
+
+| 你会看到的名称 | 用途 | 兼容调用 ID |
+| --- | --- | --- |
+| 开始一个改动 | 建立本次改动的范围 | `/new-feature` |
+| 讨论需求 | 梳理目标、用户和现有行为 | `/01-需求讨论` |
+| 补充关键信息 | 消除会影响实现的歧义 | `/澄清` |
+| 整理产品方案 | 记录交互与业务规则 | `/02-产品文档` |
+| 明确界面方案 | 处理界面和体验要求 | `/02B-UI设计` |
+| 评估技术方案 | 确认数据流、边界和失败处理 | `/03-技术架构` |
+| 准备检查清单 | 写清如何证明改动正确 | `/06-测试用例` |
+| 确认完成标准 | 汇总目标、范围和验收方式 | `/定义完成` |
+| 开工前检查 | 检查不同文档之间是否矛盾 | `/一致性检查` |
+| 开始修改 | 执行代码修改 | `/04-代码实现` |
+| 完成这次改动 | 修改、检查、修复并给出最终结果 | `/交付至完成` |
+| 检查代码改动 | 检查代码质量和风险 | `/05-代码审查` |
+| 验证改动 | 运行验收和测试 | `/07-测试执行` |
+| 准备发布 | 整理发布前清单 | `/08-发布准备` |
+| 执行发布 | 在获得授权后执行发布步骤 | `/09-发布执行` |
+| 总结这次工作 | 记录结果和经验 | `/10-复盘总结` |
+| 查看进度 | 查看当前做到哪里 | `/workflow-status` |
+
+旧调用 ID 不变，已有脚本和使用习惯可以继续工作。显示名称只是让选择入口和阅读结果更直观。
+
+## 商业化工作
+
+商业化部分用于回答“卖给谁、为什么买、在哪里找到客户、投入多少、效果怎样”。可以直接说：
+
+> 为这个产品建立商业化基线，先从定位和理想客户开始。
+
+首次可按业务定位、商业模式、客户画像、使用场景、渠道、获客策略、预算和渠道执行依次整理；上线后再按周期复盘。商业化工作默认只生成本地文档和清单，不会自行发布内容、购买广告或联系外部人员。
+
+详见[双轨工作流设计](./docs/dual-track-workflow.md)。
+
+## 其他安装方式
 
 从源码 checkout 本地运行：
 
@@ -59,13 +146,11 @@ npx --yes --package openone-workflow-kit@1.0.0 openone-workflow-init --target . 
 node /path/to/openone-workflow-kit/bin/init-workspace.cjs --target .
 ```
 
-也可以使用 shell wrapper：
+使用 shell wrapper：
 
 ```bash
 /path/to/openone-workflow-kit/install.sh . --tools codex,claude,cursor
 ```
-
-如果你拿到的是 Git 地址或本地 tarball，见 [可分享安装方式](./docs/shareable-install.md)。该文档也说明了如何先验证 Registry 中的 `1.0.0` 再安装，避免把尚未发布的版本当作可用事实。
 
 常用参数：
 
@@ -74,135 +159,98 @@ node /path/to/openone-workflow-kit/bin/init-workspace.cjs --target .
 node /path/to/openone-workflow-kit/bin/init-workspace.cjs --target . --tools codex,claude,cursor
 
 # GitHub 包安装方式
-npx --yes --package "git+https://github.com/bluecoast1379/openone-workflow-kit.git#v1.0.0" openone-workflow-init --target . --tools codex,claude,cursor
+npx --yes --package "git+https://github.com/bluecoast1379/openone-workflow-kit.git#v1.1.0" openone-workflow-init --target . --tools codex,claude,cursor
 
 # 工具名支持 trea 别名，会自动归一为 trae
 node /path/to/openone-workflow-kit/bin/init-workspace.cjs --target . --tools codex,trea,codebuddy
 
-# 非交互模式，缺失资料会写入 workflow/INITIALIZATION_QUESTIONS.md
+# 非交互模式；缺失资料写入待补问题文件
 node /path/to/openone-workflow-kit/bin/init-workspace.cjs --target . --yes
 
-# 只查看会生成什么，不写文件
+# 只查看将生成什么，不写文件
 node /path/to/openone-workflow-kit/bin/init-workspace.cjs --target . --dry-run
 ```
 
-## 初始化器会做什么
+更多安装场景见[可分享安装方式](./docs/shareable-install.md)。
 
-1. 扫描目标工作区本地文件和目录，识别代码仓库、技术栈线索、项目资料、UI 规范、前后端规范和测试规范。
-2. 生成 `workflow/team-profile.yaml`，只记录本地路径、工具选择、技术栈和缺失项，不上传任何资料。
-3. 如果必要资料缺失：
-   - 交互式终端：逐项提问。
-   - 非交互模式：生成 `workflow/INITIALIZATION_QUESTIONS.md`。
-4. 生成跨工具入口：
-   - Codex: `AGENTS.md`、`.agents/skills/agent-workflow/` 与 32 个 `.agents/skills/<skill-slug>/`
-   - Claude Code: `CLAUDE.md`、`.claude/commands/`
-   - Cursor: `.cursor/rules/` 和 `.cursor/commands/`
-   - Copilot: `.github/copilot-instructions.md`
-   - CodeBuddy / Kiro / Trae: 各自 `instructions.md`
-5. 初始化器本身不执行远程 Git、push、构建部署或数据库写入。生成后的个人工作流允许 agent 在范围明确且工作树干净时执行本地分支命名、创建、commit、tag 和本地 merge；远程 push、release、部署和生产配置写入需要用户明确授权。
+## 隐私与安全边界
 
-### Codex 调用方式与 0.1.0 迁移
-
-Codex Desktop 输入 `/01`、`/B1` 等关键词后，从 `/` 面板的 Skills 分组选择中文阶段；CLI/IDE 使用 `/skills` 或 `$workflow-...`。这是 Skill 选择，不是 Claude 式字面项目命令 `/01-需求讨论`。
-
-从 0.1.0 升级时执行：
-
-```bash
-npx --yes --package openone-workflow-kit@1.0.0 openone-workflow-init \
-  --target . --tools codex --upgrade --force --yes
-```
-
-升级会用精确的 0.1.0 模板指纹识别旧 `.codex/prompts/` 根层文件：只删除未改动的 kit 生成文件，保留子目录、用户自定义或编辑过的文件，并生成当前 Codex 可发现的 `.agents/skills/`。已有 `team-profile.yaml`、工作区宪法和个人规范不会被 `--force` 覆盖；同名用户 Skill 会保留原文件并输出 `.agent-workflow-new` 合并副本。可先追加 `--dry-run` 查看迁移计划。
-
-## 隐私与脱敏边界
-
-本 kit 自身不应包含任何真实客户字段、内部系统地址、真实 URL 或凭证。对外分发前运行：
+本 kit 自身不应包含真实客户字段、内部系统地址、真实 URL 或凭证。对外分发前运行：
 
 ```bash
 node openone-workflow-kit/bin/check-sanitized.cjs
 ```
 
-个人项目的业务介绍、项目资料、代码、UI 文件、前后端规范和测试规范只在本地被引用；初始化器不把这些资料发送到外部服务。
+个人项目的介绍、代码、设计资料和测试规范只在本地被引用。初始化器不把这些资料发送到外部服务。
 
-## 生成后的工作方式
-
-初始化完成后，个人项目按 `AGENTS.md` 和 `workflow/core/commands/` 推进。
-
-研发轨（每个需求一轮；`/new-feature` 时按 S/M/L 分级，S 档压缩为 定义完成→实现→验证 三步）：
-
-1. `/new-feature`（S/M/L 复杂度分级）
-2. `/01-需求讨论`（存量行为先读 `specs/`）
-3. `/澄清`（按需：≤5 问消融歧义，答案写回文档）
-4. `/02-产品文档`
-5. `/02B-UI设计`（含体验预算）
-6. `/03-技术架构`（含数据流/状态机草案、规范提取到 `workflow/standards/`）
-7. `/06-测试用例`（风险驱动，Oracle-ready）
-8. `/定义完成`（把 01-06 编译成完成合同：数据流、失败路径、质量预算、验收 Oracle、术语表、影响边界；Definition Lint 通过并经用户确认后冻结）
-9. `/一致性检查`（实现前只读交叉检查）
-10. `/交付至完成`（在合同范围内自主循环 实现→验证→修复→复验 直到 blocking Oracle 全绿或精确阻塞），或手动 `/04-代码实现`、`/04A`、`/04B` → `/05-代码审查` → `/07-测试执行`
-11. `/08-发布准备`（发布准入 = blocking Oracle 全 PASS）
-12. `/09-发布执行`
-13. `/10-复盘总结`（行为增量回写 `specs/` living specs）
-
-商业化轨（每个产品一份基线 + 周期复盘）：
-
-1. `/new-product`
-2. `/B1-业务定位`（可用 `/B1-B8-商业化准备` 一次性串联 B1 到 B8）
-3. `/B2-商业模式`
-4. `/B3-PMF与客户画像`
-5. `/B4-场景与购买旅程`
-6. `/B5-渠道漏斗映射`
-7. `/B6-营销获客策略`
-8. `/B7-营销预算`
-9. `/B8-渠道执行策略`
-10. `/B9-策略复盘`（周期执行：建议周检视指标、月度策略复盘、季度定位校准）
-
-两轨衔接：`/01`、`/02` 读取定位、ICP 与场景基线；`/08`、`/09` 对照 B5/B8 准备发布营销材料和分发清单；`/10` 的增长信号回流 `/B9`；B8 的营销工程需求（landing、SEO 页面、埋点）通过 `/new-feature` 进入研发轨。
-
-业务代码修改必须先通过功能分支闸门、阶段闸门和并行开发隔离检查；M/L 档需求还必须有已冻结且 Definition Lint 通过的完成合同（S 档为迷你合同）。涉及 UI 或前端的功能必须先完成 `/02B-UI设计`，或记录用户明确授权的范围有限设计豁免。文档分析和初始化不等于授权实现代码。商业化轨只产出文档和清单：对外发布、投放、cold outreach 必须由用户明确授权或自行执行，市场结论必须做证据分级、不得编造数据。
-
-完成合同可用内置校验器检查结构：
+## 从旧版本升级到 1.1.0
 
 ```bash
-node openone-workflow-kit/bin/check-contract.cjs features/<feature>/00-完成合同.md
+npx --yes --package openone-workflow-kit@1.1.0 openone-workflow-init \
+  --target . --tools codex --upgrade --force --yes
 ```
 
-初始化器还会在目标工作区生成 `workflow/constitution.md`（跨需求不可协商原则）、`workflow/standards/`（个人规范层）和 `specs/`（已实现行为的 living specs）。
+升级会识别未修改的旧版生成文件，保留用户自定义内容。已有 `team-profile.yaml`、项目基本规则、个人规范、策略文件和同名自定义入口不会被静默覆盖；需要人工合并的新内容会写入 `.agent-workflow-new`。可先追加 `--dry-run` 查看计划。
 
-个人版迁移了 gstack 指南中的独立开发者发布经验：`main` / `prod` 双分支、本地集成、语义化 tag、扩展/CLI/桌面应用发布清单、发布后文档和复盘。agent 可以执行本地 git 分支、commit、tag、merge；远程 push、GitHub release、商店提交、部署和生产配置写入需要用户明确授权。
+旧工作区没有 `workflow/policy.yaml` 时，1.1.0 会补充默认值为“完整检查”的策略，避免升级后静默放宽原有流程；全新工作区默认使用“自动选择”。
 
-## 维护建议
+## 高级兼容信息
 
-- 通用规则只改 `workflow/core`。
-- 个人项目特化配置只改 `workflow/team-profile.yaml`。
-- 工具入口由初始化器或 adapter 生成，不把业务规则硬编码到单个工具里。
-- 对外发布前先跑脱敏检查，再由人工复核许可证、示例和文档。
+这一节面向维护者、排障和审计场景；普通使用不需要理解这些名称。
 
-## 开源协作
+### 内部名称与用户显示
 
-- 贡献说明见 [CONTRIBUTING.md](./CONTRIBUTING.md)。
-- 安全报告说明见 [SECURITY.md](./SECURITY.md)。
-- 行为准则见 [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)。
-- GitHub issue 和 PR 模板位于 `.github/`。
+| 旧版或内部名称 | 默认显示 |
+| --- | --- |
+| feature 容器 | 这次改动 / 需求文件夹 |
+| 完成合同、合同冻结 | 完成标准、完成标准已确认 |
+| Oracle | 验收项 |
+| blocking Oracle | 必须通过的验收项 |
+| Oracle 状态账本 | 验收记录 |
+| Definition Lint | 完成标准检查 |
+| gate / 闸门 | 开始条件或发布条件 |
+| impact boundary | 这次会改什么、不会改什么 |
+| precise blocker | 明确卡点 |
+| S / M / L | 轻量改动 / 常规改动 / 高风险改动 |
+| `NOT_RUN` | 未检查 |
+| `PASS` / `FAIL` | 已通过 / 未通过 |
+| `STALE` | 改动后需要重查 |
+| `WAIVED` | 已确认作为例外跳过 |
+| worktree | 独立开发目录 |
+| constitution | 项目基本规则 |
+| living specs | 已上线功能说明 |
 
-## 本地验证
+内部文件名、字段和值暂时保留，以兼容已有工作区和校验脚本。用户可见的标题、说明和默认回复使用白话；只有技术详情模式才展示内部名称。
+
+### Codex 与其他工具的入口兼容
+
+Codex Desktop 可以输入 `/01`、`/B1` 等关键词，再从 `/` 面板选择对应的阶段 Skill；CLI/IDE 使用 `/skills` 或 `$workflow-...`。这属于 Skill 选择，不是 Claude 式字面项目命令。
+
+命令元数据继续作为内部单一事实源，但用户标题与内部执行说明分开维护。工具 adapter 共享相同的用户标题，旧命令 ID 和 Skill slug 保持兼容。
+
+`workflow/core/` 保持工具无关；不同工具共享同一套规则，但不承诺完全相同的交互体验。
+
+## 维护与验证
+
+- 通用规则修改在 `workflow/core/`。
+- 个人项目配置修改在 `workflow/team-profile.yaml` 和 `workflow/policy.yaml`。
+- 工具入口由初始化器或 adapter 生成，不在单个工具里复制业务规则。
+- 对外发布前先运行脱敏检查，再由人工复核许可证、示例和文档。
+
+本地检查：
 
 ```bash
 cd /path/to/openone-workflow-kit
 npm run check
 ```
 
-该命令会执行脚本语法检查、starter kit 脱敏检查和临时目录 smoke test。
-
-## 本地打包
+本地打包：
 
 ```bash
 cd /path/to/openone-workflow-kit
 npm run build:release
 ```
 
-该命令会在 `dist/` 下生成本地 tarball 和 `RELEASE_MANIFEST.md`。它不创建远程仓库、不 push、不打 tag、不执行 npm publish。
+打包只在 `dist/` 生成本地 tarball 和 `RELEASE_MANIFEST.md`，不会创建远程仓库、推送、打标签或发布 npm 包。
 
-远程发布步骤见 [手动发布指南](./docs/manual-publish.md)。维护本 kit 自身时，push、tag、npm publish 仍应由维护者明确授权。
-
-维护者发布、接收方验收和支持边界见 [维护者交接](./docs/maintainer-handoff.md)。
+更多资料：[如何写清完成标准](./docs/definition-of-done.md) · [维护者交接](./docs/maintainer-handoff.md) · [手动发布指南](./docs/manual-publish.md) · [贡献说明](./CONTRIBUTING.md) · [安全报告](./SECURITY.md) · [行为准则](./CODE_OF_CONDUCT.md)

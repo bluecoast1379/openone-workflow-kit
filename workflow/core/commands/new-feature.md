@@ -2,32 +2,49 @@
 
 ## Goal
 
-初始化功能工作流: 创建工作区级 `features/{feature}/` 容器、状态文件和截图目录，并完成复杂度分级（S/M/L），决定该需求走全流程还是压缩路径。
+开始一个改动：根据 `workflow/policy.yaml` 选择“轻量处理”或“完整检查”，只创建当前处理方式真正需要的记录。
 
 ## Required Inputs
 
-- `AGENTS.md`
-- `workflow/team-profile.yaml`
-- `workflow/constitution.md`
-- Workspace-level `specs/` 现有行为基线（判断是否触碰既有行为）
-- 用户对需求的初始描述
+- 用户对改动的描述
+- `workflow/policy.yaml`（如果存在）和 `workflow/team-profile.yaml`
+- 两种方式都读：与请求直接相关的本地代码、仓库规则、分支和未提交改动
+- 仅在完整检查或风险信号相关时读：`specs/`、`workflow/constitution.md`、`workflow/standards/` 和既有 `features/{feature}/` 文档
 
 ## Execution Rules
 
-- Read local facts before writing conclusions.
-- 创建容器后立即做**复杂度分级**，给出建议档位和理由，经用户确认后写入状态文件：
-  - **S 档**（bugfix、文案、单文件小改，不改对外契约、不触碰高风险文件）：压缩为三步——`/定义完成`（只填合同 ★ 必填节的迷你合同）→ 实现 → 验证；跳过 02/02B/03/05/06 的独立文档。
-  - **M 档**（单仓功能，影响面清晰）：标准路径，可按需豁免 02B（无 UI）等单项并记录。
-  - **L 档**（跨仓、动数据/契约、触碰高风险文件、新产品首发）：全流程，不得豁免闸门阶段。
-- 分级依据：影响仓库数、是否修改对外契约或 `specs/` 已有行为、是否触碰 team-profile `high_risk_files`、预估改动规模、回滚难度。拿不准时就近上调一档。
-- 分级只压缩文档路径，不豁免授权边界：任何档位的远程 push、release、部署、对外动作仍需用户明确授权。
-- 默认使用简体中文展示工作流沟通和阶段产物；专有名词、产品名、品牌名、代码标识符、命令、文件路径、分支名、API、SDK、框架、协议、标准、错误信息和官方英文术语保留原文。
-- Local branch creation, commit, tag, and local merge may be executed by the agent for personal projects after scope and working-tree checks. Remote Git refresh, push, release, deployment, database write, and production config write require explicit user authorization.
-- This stage does not authorize business code changes.
+1. 先读取本地事实，初步确认“这次会改什么、不会改什么”。
+2. 如果 kit 提供策略解析器，运行：
+
+   ```bash
+   node workflow/core/tools/resolve-policy.cjs --workspace . [--profile adaptive|strict] [--signal <id[,id...]>] [--changed-files <path[,path...]>]
+   ```
+
+   记录其 `resolved_profile`、`policy_source` 和 `escalation_signals`。如果没有解析器，按 `workflow/policy.yaml` 直接判断；该文件也不存在时，选择“完整检查”。
+3. “自动选择”下，同时满足以下条件才走“轻量处理”：范围清楚、只影响一个本地仓库、可回退、有定向验证方法，且未命中任何自动升级条件。
+4. 以下任一情况立即选择或升级为“完整检查”：
+   - 对外 API、公开协议或外部集成约定变更；
+   - 数据结构、持久化格式或兼容性变更；
+   - 登录认证、授权、权限或安全边界变更；
+   - 数据迁移、表结构迁移或批量修复；
+   - 持续集成与部署流程（CI/CD）、发布触发条件、部署脚本、基础设施或运行环境变更；
+   - 生产配置、密钥或真实生产数据相关变更；
+   - 跨仓库改动、不可逆或难以恢复的操作；
+   - 任何 diff 超出已确认的改动范围。
+5. 轻量处理时：
+   - 用户已明确要求修改，即视为本地实现授权；
+   - 不创建 `features/{feature}/` 需求文件夹，不单独运行 `/定义完成`、`/一致性检查`、`/02B-UI设计`；
+   - 在当前任务中保留简短的改动范围和验收项，直接进入实现；
+   - 仅文案、既有页面局部样式或既有组件内的明确小改，可以现有 UI 为基准，无需单独的 `02B` 文档。
+6. 完整检查时，创建 `features/{feature}/` 与状态文件，再按需求复杂度选择“常规改动”或“高风险改动”的文档深度。
+7. 本步骤不授权远程 Git、发布、部署、数据库写入、生产配置写入或任何对外动作。
 
 ## Required Outputs
 
-- 创建工作区级 `features/{feature}/` 目录和截图目录。
-- 按 `workflow/core/templates/00-workflow-status.md` 创建 `features/{feature}/00-工作流状态.md`，写入复杂度档位、分级理由和对应路径。
-- 商业化基线存在时登记关联的 `business/{product}/`。
-- Record unresolved questions and evidence gaps explicitly.
+- 总是输出：处理方式、选择理由、已确认范围、验收项与已识别风险。
+- 轻量处理：不创建持久化需求记录，结果由实现命令在终点一次性记录。
+- 完整检查：创建 `features/{feature}/00-工作流状态.md` 及需要的目录，记录处理方式、分类理由与关联材料。
+
+## 内部兼容详情
+
+已有工作区中的 `S/M/L` 可分别映射为“轻量改动/常规改动/高风险改动”。内部代码可保留，默认不要求用户理解或确认这些代码。

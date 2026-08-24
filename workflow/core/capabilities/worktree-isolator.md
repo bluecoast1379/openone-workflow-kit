@@ -1,53 +1,28 @@
 # Capability: worktree-isolator
 
 - **Tier**: recommended
-- **Stage**: `/04`, `/04A`, `/04B`
-- **Purpose**: 同一仓库多个需求并行实现时，强制一个需求一个 worktree，避免改动混在同一工作目录。
+- **Stage**: `/04`, `/04A`, `/04B`, `/交付至完成`
+- **Purpose**: 只在同一仓库确实并行开发多个需求时，使用独立开发目录隔离改动。
 
-## 为什么需要
+## 触发条件
 
-同仓多需求在一个目录里反复切分支，最容易产生未保存改动、暂存区残留、错分支提交和同文件冲突。进入实现阶段后必须用物理目录隔离。
+- 只有当同一仓库已有另一个活跃需求处于实现中，且两者会在同一时间段继续修改时，才触发。
+- 没有真实并行时，不为了满足流程而新建 worktree（独立开发目录）。
 
-## 输入
+## 检查与动作
 
-- 活跃开发登记表，例如 `features/00-active-branches.md`
-- 当前需求、受影响仓库、功能分支和 worktree 路径
-- 当前 `pwd`、分支、dirty 状态
-- 本次影响文件清单
+1. 读取活跃开发记录、当前 `pwd`、分支、dirty tree 和预计改动文件。
+2. 已有另一需求并行实现时，当前需求必须使用独立 worktree。
+3. 两个活跃需求要改同一文件、SQL、方法或业务规则时，先停止后进入的需求，说明具体冲突。
+4. 个人仓库中，改动范围与 dirty tree 已检查后，agent 可按仓库规则创建本地分支和对应 worktree；不要求用户先手工创建分支。
+5. 创建 worktree 不等于获得远程写入授权；远程操作仍需用户明确授权。
 
-## 输出
+## 默认用户输出
 
-```yaml
-result: PASS | WARN | BLOCK
-repo: "<repo>"
-current_worktree: "<path>"
-registered_worktree: "<path>"
-same_repo_active_features:
-  - feature: "<feature>"
-    branch: "<branch>"
-    files: ["..."]
-conflicts:
-  - type: same_file | same_sql | same_method | same_business_rule
-    detail: "..."
-```
+- 无并行：“未发现同仓并行改动，无需独立开发目录。”
+- 已隔离：显示需求、本地分支和目录。
+- 有冲突：显示冲突文件/规则和建议的先后顺序。
 
-## 阻断规则
+## 内部兼容详情
 
-- 同仓已有其他活跃 04 阶段需求，且当前需求未使用独立 worktree 时阻断。
-- 两个活跃需求改同一文件、SQL、方法或业务口径时，默认阻断后进入实现的需求。
-- agent 不得自动创建开发分支；worktree 创建也必须先由用户确认已有本地功能分支。
-
-## Adapter 示例
-
-- **L0**: 在 `AGENTS.md` 写明同仓并行策略。
-- **L1**: prompt 要求用户确认 worktree 路径。
-- **L2**: slash command 读取活跃登记表并输出准入结论。
-- **L3**: 写入前 hook 检查当前目录是否为登记 worktree。
-- **L4**: subagent 维护活跃需求冲突矩阵。
-
-## 反模式
-
-- 在一个目录里切两个功能分支同时开发。
-- 只按分支名判断隔离完成，不检查 `pwd`。
-- 同文件不同区域也默认并行。
-- 把 integration 分支当正式开发分支。
+Adapter 可保留 `PASS/WARN/BLOCK`、`current_worktree` 和 `same_repo_active_features` 等机器字段。

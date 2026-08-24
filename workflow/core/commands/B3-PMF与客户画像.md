@@ -6,7 +6,6 @@ PMF 与客户画像: 用定义好的信号验证产品市场匹配度，确定�
 
 ## Required Inputs
 
-- `AGENTS.md`
 - `workflow/team-profile.yaml`
 - Workspace-level `business/{product}/B1-业务定位.md`、`B2-商业模式.md`
 - 用户访谈记录、支持对话、公开评论和反馈

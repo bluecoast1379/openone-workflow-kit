@@ -18,6 +18,7 @@ const GENERATED_BY = `openone-workflow-kit ${PACKAGE_VERSION}`;
 const MANAGED_ADAPTER_MARKER = 'generated-by: openone-workflow-kit; managed-adapter: true';
 const COMMAND_MANIFEST = loadCommandManifest(path.join(KIT_ROOT, 'workflow/core/command-manifest.yaml'));
 const COMMANDS = COMMAND_MANIFEST.commands;
+const WORKFLOW_POLICY_TEMPLATE = 'workflow/core/templates/workflow-policy.template.yaml';
 // Keep the existing tuple consumers small while making the manifest the single source of truth.
 const STAGES = COMMANDS.map(({ id, title, description }) => [id, title, description]);
 
@@ -137,7 +138,7 @@ async function main() {
 
   if (!enabledTools.length && interactive) {
     const answer = await promptLine(
-      `请选择 AI 工具（${SUPPORTED_TOOLS.join(', ')}）。留空会生成全部薄 adapter: `
+      `请选择 AI 工具（${SUPPORTED_TOOLS.join(', ')}）。留空会生成全部本地工具入口: `
     );
     enabledTools = normalizeTools(answer || SUPPORTED_TOOLS.join(','));
   }
@@ -282,7 +283,8 @@ function scanRepos(root) {
       repos.push({
         path: rel,
         marker,
-        tech_stack: detectTechStack(dir)
+        tech_stack: detectTechStack(dir),
+        current_branch: marker === 'git' ? detectCurrentGitBranch(dir) : 'unknown'
       });
       return;
     }
@@ -313,6 +315,27 @@ function detectRepoMarker(dir) {
     if (fs.existsSync(path.join(dir, file))) return marker;
   }
   return '';
+}
+
+function detectCurrentGitBranch(dir) {
+  const dotGit = path.join(dir, '.git');
+  let gitDir = dotGit;
+  try {
+    const stat = fs.lstatSync(dotGit);
+    if (stat.isFile()) {
+      const pointer = fs.readFileSync(dotGit, 'utf8').match(/^gitdir:\s*(.+)\s*$/m);
+      if (!pointer) return 'unknown';
+      gitDir = path.resolve(dir, pointer[1]);
+    } else if (!stat.isDirectory() || stat.isSymbolicLink()) {
+      return 'unknown';
+    }
+    const head = fs.readFileSync(path.join(gitDir, 'HEAD'), 'utf8').trim();
+    const branch = head.match(/^ref:\s+refs\/heads\/(.+)$/);
+    if (branch) return branch[1];
+    return /^[0-9a-f]{40,64}$/i.test(head) ? `detached:${head.slice(0, 12)}` : 'unknown';
+  } catch {
+    return 'unknown';
+  }
 }
 
 function detectTechStack(dir) {
@@ -391,6 +414,7 @@ function buildInstallPlan(target, profile, options) {
   add('workflow/README.md', makeWorkflowReadme());
   add('workflow/core/README.md', readKitFile('workflow/core/README.md'));
   add('workflow/core/command-manifest.yaml', readKitFile('workflow/core/command-manifest.yaml'));
+  add('workflow/core/tools/resolve-policy.cjs', readKitFile('bin/resolve-policy.cjs'));
   add('workflow/core/commands/README.md', readKitFile('workflow/core/commands/README.md'));
   add('workflow/core/templates/README.md', readKitFile('workflow/core/templates/README.md'));
   add('workflow/core/templates/00-workflow-status.md', readKitFile('workflow/core/templates/00-workflow-status.md'));
@@ -400,6 +424,13 @@ function buildInstallPlan(target, profile, options) {
   add('workflow/core/templates/completion-contract.md', readKitFile('workflow/core/templates/completion-contract.md'));
   add('workflow/core/templates/constitution.template.md', readKitFile('workflow/core/templates/constitution.template.md'));
   add('workflow/core/templates/living-spec.md', readKitFile('workflow/core/templates/living-spec.md'));
+  const policyTemplate = readKitFile(WORKFLOW_POLICY_TEMPLATE);
+  add(WORKFLOW_POLICY_TEMPLATE, policyTemplate);
+  const targetPolicy = path.join(target, 'workflow/policy.yaml');
+  const missingPolicyInExistingWorkflow = !fs.existsSync(targetPolicy) &&
+    hasExistingWorkflowFootprint(target);
+  const policyProfile = missingPolicyInExistingWorkflow ? 'strict' : 'adaptive';
+  add('workflow/policy.yaml', makeWorkflowPolicy(policyTemplate, policyProfile), { preserveOnUpgrade: true });
   add('workflow/constitution.md', readKitFile('workflow/core/templates/constitution.template.md'), { preserveOnUpgrade: true });
   add('workflow/standards/README.md', makeStandardsReadme(), { preserveOnUpgrade: true });
   add('specs/README.md', makeSpecsReadme(), { preserveOnUpgrade: true });
@@ -412,16 +443,17 @@ function buildInstallPlan(target, profile, options) {
   add('workflow/INSTALL_REPORT.md', makeInstallReport(profile, options));
   if (profile.missing.length) add('workflow/INITIALIZATION_QUESTIONS.md', makeQuestions(profile));
 
-  for (const [id, title, description] of STAGES) {
+  for (const [id] of STAGES) {
     const rel = `workflow/core/commands/${id}.md`;
-    add(rel, readKitFileIfExists(rel, makeCoreCommand(id, title, description)));
+    add(rel, readKitFile(rel));
   }
 
-  // AGENTS.md is the tool-neutral entry document and the full usage guide.
-  // Generate it regardless of selected tools so every adapter can point to it.
+  // Keep the globally loaded entry compact. Detailed stage behavior stays in
+  // the selected command and policy so small tasks do not pay for all stages.
   add('AGENTS.md', makeAgentsEntry(profile));
   if (profile.enabledTools.includes('codex')) {
     add('.agents/skills/agent-workflow/SKILL.md', makeAgentWorkflowSkill(), { managedAdapter: true });
+    add('.agents/skills/agent-workflow/agents/openai.yaml', makeAgentWorkflowSkillMetadata(), { managedAdapter: true });
     for (const command of COMMANDS) {
       const base = `.agents/skills/${command.skill_slug}`;
       add(`${base}/SKILL.md`, makeStageSkill(command), { managedAdapter: true });
@@ -429,7 +461,7 @@ function buildInstallPlan(target, profile, options) {
     }
   }
   if (profile.enabledTools.includes('claude')) {
-    add('CLAUDE.md', '先读取 AGENTS.md，再遵循 workflow/core 和 workflow/team-profile.yaml。.claude/commands 下的工具命令只是薄 adapter。\n');
+    add('CLAUDE.md', '先读取 workflow/policy.yaml 和 workflow/team-profile.yaml，再按当前任务读取一个 workflow/core/commands 下的说明。.claude/commands 仅用于定位当前说明。\n');
     for (const [id] of STAGES) add(`.claude/commands/${id}.md`, makeThinCommand('Claude Code', id));
   }
   if (profile.enabledTools.includes('cursor')) {
@@ -457,9 +489,24 @@ function readKitFile(rel) {
   return fs.readFileSync(path.join(KIT_ROOT, rel), 'utf8');
 }
 
-function readKitFileIfExists(rel, fallback) {
-  const file = path.join(KIT_ROOT, rel);
-  return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : fallback;
+function makeWorkflowPolicy(template, profile) {
+  if (profile === 'adaptive') return template;
+  if (profile !== 'strict') throw new Error(`未知工作流处理方式: ${profile}`);
+  if (!/^default_profile:\s*adaptive\s*$/m.test(template)) {
+    throw new Error(`${WORKFLOW_POLICY_TEMPLATE} 缺少 default_profile: adaptive`);
+  }
+  return template.replace(
+    /^default_profile:\s*adaptive\s*$/m,
+    'default_profile: strict # 兼容旧工作区：升级前没有策略文件，继续使用完整检查'
+  );
+}
+
+function hasExistingWorkflowFootprint(target) {
+  return [
+    'workflow/team-profile.yaml',
+    'workflow/core/command-manifest.yaml',
+    'workflow/INSTALL_REPORT.md'
+  ].some((rel) => fs.existsSync(path.join(target, rel)));
 }
 
 function assertSafeWritePlan(writes, options, targetRoot) {
@@ -783,6 +830,7 @@ function makeTeamProfileYaml(profile) {
     for (const repo of profile.repos) {
       lines.push(`  - path: ${yamlString(repo.path)}`);
       lines.push(`    marker: ${yamlString(repo.marker)}`);
+      lines.push(`    current_branch: ${yamlString(repo.current_branch || 'unknown')}`);
       lines.push('    tech_stack:');
       for (const tech of repo.tech_stack) lines.push(`      - ${yamlString(tech)}`);
       lines.push('    family: "<TODO: 项目族分类>"');
@@ -793,11 +841,10 @@ function makeTeamProfileYaml(profile) {
   }
   lines.push('');
   lines.push('branch_model:');
-  lines.push('  type: "personal-prod-main-feature"');
-  lines.push('  production_branch: "prod"');
-  lines.push('  integration_branch: "main"');
-  lines.push('  feature_branch_rule: "agent may create feature/<short-name> or fix/<short-name> from prod when the target repo is personal and the working tree is clean"');
-  lines.push('  worktree_dir: "_worktrees"');
+  lines.push('  type: "use-existing-repository-strategy"');
+  lines.push('  production_branch: "unknown"');
+  lines.push('  integration_branch: "unknown"');
+  lines.push('  local_branch_rule: "agent may create a scoped local branch after inspecting uncommitted changes"');
   lines.push('');
   lines.push('risk_policy:');
   lines.push('  local_git_operations: "agent-allowed-after-scope-check"');
@@ -807,22 +854,13 @@ function makeTeamProfileYaml(profile) {
   lines.push('  push_and_release: "explicit-user-authorization-required"');
   lines.push('  outbound_marketing_actions: "explicit-user-authorization-required"');
   lines.push('  paid_ad_spend: "manual-only"');
-  lines.push('  database_writes: "manual-only"');
-  lines.push('  config_writes: "manual-only"');
-  lines.push('  high_risk_files:');
-  lines.push('    - "ci/**"');
-  lines.push('    - "cd/**"');
-  lines.push('    - "deploy/**"');
-  lines.push('    - "*.env*"');
-  lines.push('    - "application*.yml"');
-  lines.push('    - "application*.yaml"');
-  lines.push('    - "bootstrap*.yml"');
-  lines.push('    - "bootstrap*.yaml"');
-  lines.push('    - "pom.xml"');
-  lines.push('    - "package.json"');
-  lines.push('    - "lockfiles"');
+  lines.push('  database_writes: "explicit-user-authorization-required"');
+  lines.push('  production_config_writes: "explicit-user-authorization-required"');
+  lines.push('  local_project_config_writes: "agent-allowed-after-scope-check"');
+  lines.push('  high_risk_detection: "use workflow/policy.yaml and workflow/core/tools/resolve-policy.cjs"');
   lines.push('');
   lines.push('workflow:');
+  lines.push('  policy: "workflow/policy.yaml"');
   lines.push('  features_dir: "features"');
   lines.push('  business_dir: "business"');
   lines.push('  specs_dir: "specs"');
@@ -830,12 +868,9 @@ function makeTeamProfileYaml(profile) {
   lines.push('  constitution: "workflow/constitution.md"');
   lines.push('  core_dir: "workflow/core"');
   lines.push('  adapters_dir: "workflow/adapters"');
-  lines.push('  require_stage_gate_for_code: true');
-  lines.push('  require_feature_branch_for_code: true');
-  lines.push('  complexity_tiers: "S/M/L"');
-  lines.push('  definition_gate: "frozen-contract-with-lint-required-for-m-l; starred-mini-contract-for-s"');
-  lines.push('  done_verdict: "all-blocking-oracles-pass-or-user-waived"');
-  lines.push('  same_repo_parallel_policy: "worktree-required-after-implementation-stage"');
+  lines.push('  processing_profile_source: "workflow/policy.yaml"');
+  lines.push('  user_facing_profiles: "自动选择 / 完整检查；低风险时为轻量处理"');
+  lines.push('  completion_language: "完成标准 / 验收项 / 检查结果 / 明确卡点"');
   lines.push('  business_review_cadence: "weekly-metrics, monthly-strategy, quarterly-positioning"');
   lines.push('');
   return lines.join('\n');
@@ -848,33 +883,35 @@ function yamlString(value) {
 function makeWorkflowReadme() {
   return `# Workflow
 
-本目录由 ${GENERATED_BY} 生成，用于个人开发者项目。
+本目录由 ${GENERATED_BY} 生成，用来保存当前工作区的协作设置和按需说明。
 
-- \`team-profile.yaml\`: 当前个人项目或个人工作区的本地配置（事实与路径）。
-- \`constitution.md\`: 工作区宪法——跨需求不可协商的原则。
-- \`standards/\`: 从既有代码库提取的个人规范层。
-- \`core/\`: 工具无关的工作流规则、命令、模板和能力。
-- \`adapters/\`: 支持工具的 adapter 说明。
-- \`INITIALIZATION_QUESTIONS.md\`: 缺少必要本地资料时生成的问题清单。
+- \`policy.yaml\`：决定使用“自动选择”还是“完整检查”。新安装默认自动选择；旧工作区升级时若原来没有该文件，继续使用完整检查。
+- \`team-profile.yaml\`：项目位置、已有资料和本地操作范围。
+- \`constitution.md\`：所有任务都不能违背的项目原则。
+- \`standards/\`：从现有代码中整理出的编写约定。
+- \`core/commands/\`：每类任务的详细说明，只按当前任务读取一个。
+- \`INITIALIZATION_QUESTIONS.md\`：仍需补充的资料。
 
-研发轨判定核心是《完成合同》（\`features/<feature>/00-完成合同.md\`）：\`/定义完成\` 编译并冻结合同，宣布完成 = blocking Oracle 全 PASS；工作区级 \`specs/\` 沉淀已发布行为的 living specs。
+## 默认处理
 
-默认使用简体中文展示工作流沟通、阶段产物、状态摘要、审查结论、测试记录、发布记录和复盘；专有名词、产品名、代码标识符、命令、文件路径、分支名、API、SDK、框架、协议、标准、错误信息和官方英文术语保留原文。
+低风险本地改动采用“轻量处理”：确认范围、批量修改、检查完整改动、运行一次针对性验证，最后统一记录结果。涉及对外接口、数据结构、登录权限、迁移、持续集成、部署、生产配置、跨项目或不可逆操作时，自动改用“完整检查”。详细条件见 \`policy.yaml\`。
 
-工作流分两条轨道：研发轨阶段产物放在工作区级 \`features/<feature>/\` 下，商业化轨（业务定位、商业模式、PMF、渠道与营销策略）阶段产物放在工作区级 \`business/<product>/\` 下，都不写入目标代码仓库。目标代码仓库只保留源码、代码相关配置、运行或构建必需资产，以及最小必要的代码侧 \`README\` 内容。
+默认用简体中文说明“这次改动、完成标准、验收项、检查结果、明确卡点和需要用户确认的事项”。阶段编号和英文状态仅用于兼容、搜索或技术排障。
 
-商业化轨只产出文档和清单：对外发布内容、投放广告、cold outreach、联系合作方需要用户明确授权或自行执行；营销工程需求（landing page、SEO 页面、埋点）通过 \`/new-feature\` 回流研发轨。
+本次改动资料放在 \`features/<name>/\`，商业规划资料放在 \`business/<name>/\`，已经发布的实际行为放在 \`specs/\`。代码仓库只保留源码、运行与构建所需内容以及必要的公开说明。
 
-\`/02B-UI设计\` 是前端实现的设计闸门；个人小改动可以记录范围有限的设计豁免，但必须说明影响面和补齐计划。
+## 安全范围
 
-个人工作流允许 agent 在明确任务范围内执行本地 git 分支命名、创建、commit、tag 和本地 merge。远程 push、GitHub release、商店发布、部署和生产配置写入需要用户明确授权。
+- 本地修改和本地版本管理可在检查范围与现有改动后执行。
+- 远程推送、发布、部署、数据库写入、生产配置写入、公开内容、营销投放和对外联系必须先得到用户明确授权。
+- 只记录真实执行过的检查，不得把计划执行写成已经通过。
 
-不要把凭证、真实客户秘密或私有 URL 写入通用 core 文件。项目知识应保留在 \`team-profile.yaml\`、\`features/<feature>/\` 或本地资料中。
+不要把凭证、真实客户秘密或私有地址写入通用规则文件。
 `;
 }
 
 function makeStandardsReadme() {
-  return `# 个人规范层（standards）
+  return `# 代码规范
 
 本目录存放**从既有代码库提取的可复用规范**：命名、目录结构、错误处理、依赖选型、提交信息等模式。原则放 \`workflow/constitution.md\`，事实与路径放 \`workflow/team-profile.yaml\`，本目录只放"怎么写代码"的规范。
 
@@ -886,14 +923,14 @@ function makeStandardsReadme() {
 }
 
 function makeSpecsReadme() {
-  return `# Living Specs（行为真相层）
+  return `# 已上线功能说明
 
-本目录存放**当前已实现并已发布**的行为规格，是存量项目（brownfield）需求定义的起点。
+本目录记录**当前已经实现并发布**的功能表现。修改现有项目时，先以这里的真实行为为起点。
 
-- 与 \`features/\` 的关系：features 是变更流水（做过什么），specs 是当前状态（现在是什么）。
-- 读：\`/01-需求讨论\`、\`/定义完成\`、\`/06-测试用例\`（回归范围）、\`/一致性检查\` 都先读本目录；触碰已有行为的需求必须显式声明改变哪几条行为编号。
-- 写：只有 \`/10-复盘总结\` 在发布后把已验证的行为增量合并进来；未发布的计划不进本目录。
-- 格式：每个领域/模块一个文件，按 \`workflow/core/templates/living-spec.md\` 组织（EARS 句式行为清单 + 数据模型 + 对外契约 + 边界）。
+- 与 \`features/\` 的关系：features 记录每次改了什么，specs 记录产品现在怎样工作。
+- 读取：改动触及已有功能时，只读取本次相关的说明，并写清会改变哪些现有行为。
+- 更新：发布完成并确认结果后，再把已验证的新行为合并进来；尚未发布的计划不要写入。
+- 格式：每个领域或模块一个文件，按 \`workflow/core/templates/living-spec.md\` 记录行为、数据、对外约定和边界。
 - 空目录是正常状态：首个需求发布后开始沉淀。
 `;
 }
@@ -928,212 +965,59 @@ ${profile.missing.map((item) => `## ${item.label}\n\n${item.question}\n\n- path:
 `;
 }
 
-function makeCoreCommand(id, title, description) {
-  const codeStage = id === '04-代码实现' || id === '04A-前端代码实现' || id === '04B-后端代码实现';
-  const reviewStage = id === '05-代码审查';
-  const prepStage = id === '03-06-研发准备';
-  const businessStage = id === 'new-product' || /^B\d/.test(id);
-  const containerDir = businessStage ? 'business/{product}' : 'features/{feature}';
-  const statusFile = businessStage ? '00-商业化状态.md' : '00-工作流状态.md';
-  return `# /${id}
-
-## 目标
-
-${title}: ${description}
-
-## 必要输入
-
-- \`AGENTS.md\`
-- \`workflow/team-profile.yaml\`
-- \`workflow/constitution.md\`
-- \`${containerDir}/\` 下的前序阶段文档
-- team-profile 中登记的本地代码、本地文档和用户提供资料
-
-## 执行规则
-
-- 先读取本地事实，再写结论。
-- 区分已验证事实、设计意图、假设和缺失证据。
-- 未真实执行的测试、构建、截图、部署或审查，不得写成已通过。
-- 个人项目允许 agent 在范围明确且工作树已检查后执行本地分支命名、创建、commit、tag 和本地 merge；远程 push、release、部署、数据库写入和生产配置写入需要用户明确授权。
-${codeStage ? '- 只有功能分支闸门、实现阶段闸门和同仓并行闸门全部通过后，才允许修改业务代码。' : '- 本阶段不授权修改业务代码；除非当前命令是实现命令且所有闸门已通过。'}
-${prepStage ? '- 本编排命令只准备 03 到 06 文档，不授权代码实现。' : ''}
-${businessStage ? '- 商业化结论必须做证据分级（一手/二手/推断）并注明来源和日期，不得编造市场数据；对外发布、投放和 outreach 需要用户明确授权；营销工程需求通过 /new-feature 回流研发轨。' : ''}
-${reviewStage ? '- 审查输出以问题优先，按严重级别排序，并引用文件、diff、测试或运行证据。' : ''}
-
-## 必要输出
-
-- 更新或创建 \`${containerDir}/\` 下对应阶段文件。
-- 阶段状态变化时更新 \`${containerDir}/${statusFile}\`。
-- 明确记录未解决问题和证据缺口。
-`;
-}
-
-function makeCommandTable() {
-  const header = '| 命令 | 阶段 | 作用 |\n| --- | --- | --- |';
-  const rows = STAGES.map(
-    ([id, title, description]) => `| \`/${id}\` | ${title} | ${description} |`
-  );
-  return [header, ...rows].join('\n');
-}
-
-function makeToolUsage(profile) {
-  const tools = profile.enabledTools;
-  const blocks = [];
-
-  if (tools.includes('claude')) {
-    blocks.push(`### Claude Code
-
-- 阶段命令来自 \`.claude/commands/\`，可直接输入，例如 \`/04-代码实现 <feature>\`。
-- 多文件或复杂改动先进入 plan mode，再执行。
-- 每个命令文件都是薄 adapter，最终都指向 \`workflow/core/commands/\`。`);
-  }
-
-  if (tools.includes('codex')) {
-    blocks.push(`### Codex
-
-- Codex 会自动读取本 \`AGENTS.md\`，并从 \`.agents/skills/\` 发现本项目的总入口和 ${COMMANDS.length} 个阶段 Skill。
-- Codex Desktop 输入 \`/01\`、\`/B1\` 等关键词后，在 Skills 分组选择中文阶段；CLI/IDE 使用 \`/skills\` 或 \`$<skill-slug>\`。
-- Codex 的项目 Skill 不是 Claude 式字面自定义命令：不能把 \`/01-需求讨论\` 当作可直接提交的项目命令 ID。
-- 所有阶段 Skill 都设置 \`allow_implicit_invocation: false\`；选择 Skill 只选择阶段，不会绕过实现、发布、投放或其他授权闸门。
-- 项目级 \`.codex/prompts/\` 不会被 Codex 加载，本 kit 不再生成该目录。`);
-  }
-
-  if (tools.includes('cursor')) {
-    blocks.push(`### Cursor
-
-- 本 kit 会在 \`.cursor/commands/\` 生成 Cursor 自定义斜杠命令（Cursor 1.6+）。在 Agent 输入框输入 \`/\`，选择 \`/04-代码实现\` 等阶段，再描述功能。
-- \`.cursor/rules/agent-workflow-core.mdc\` 会自动应用到每次请求。
-- 兜底方式：直接 @ 阶段契约，例如 \`@workflow/core/commands/04-代码实现.md\`。
-- agent 会读取阶段契约、\`workflow/team-profile.yaml\` 和前序 \`features/<feature>/\` 文档，再写阶段产物。
-- 硬闸门仍然生效：实现必须先通过功能分支闸门和阶段闸门。`);
-  }
-
-  if (tools.includes('copilot')) {
-    blocks.push(`### GitHub Copilot
-
-- \`.github/copilot-instructions.md\` 会自动生效。
-- 执行阶段时，在 chat 中引用 \`workflow/core/commands/<stage>.md\` 并描述功能。`);
-  }
-
-  for (const [tool, label] of [['codebuddy', 'CodeBuddy'], ['kiro', 'Kiro'], ['trae', 'Trae']]) {
-    if (tools.includes(tool)) {
-      blocks.push(`### ${label}
-
-- \`.${tool}/instructions.md\` 会自动生效。
-- 执行阶段时，在 chat 中引用 \`workflow/core/commands/<stage>.md\` 并描述功能。`);
-    }
-  }
-
-  if (!blocks.length) {
-    blocks.push(`未选择特定工具 adapter。请直接读取并执行 \`workflow/core/commands/<stage>.md\`。`);
-  }
-
-  return blocks.join('\n\n');
-}
-
 function makeAgentsEntry(profile) {
-  return `# Agent Workflow
+  return `# 工作区协作说明
 
-本工作区使用 ${GENERATED_BY} 生成的工具无关个人开发者 agent 工作流。它包含两条共享同一套闸门口径的轨道：研发轨把一个需求从澄清、完成合同冻结推进到实现、发布和复盘；商业化轨把一个产品从业务定位、商业模式、PMF 验证推进到渠道策略、预算和策略复盘。判定核心是《完成合同》：宣布完成 = blocking Oracle 全 PASS 的机器判定，不是"感觉做完了"。不同 AI 工具共享同一套 workflow core，每个工具只生成薄 adapter；体验会随工具能力增强或降级，但流程口径一致。
+本工作区由 ${GENERATED_BY} 准备。小改动快速完成，风险升高时自动增加检查。默认用简体中文；内部编号和英文状态只在技术详情中展示。
 
-## 快速开始
+## 接到任务时
 
-1. 先读取 \`workflow/team-profile.yaml\`（事实与路径）、\`workflow/constitution.md\`（不可协商原则）；存量项目再读工作区级 \`specs/\`（已实现行为真相）。
-2. 研发轨：用 \`/new-feature <name>\` 初始化需求并完成 S/M/L 复杂度分级。M/L 档推荐顺序：\`/01-需求讨论\` ->（\`/澄清\`）-> \`/02-产品文档\` -> \`/02B-UI设计\` -> \`/03-技术架构\` -> \`/06-测试用例\` -> \`/定义完成\`（编译完成合同，Definition Lint 通过后经用户确认冻结）-> \`/一致性检查\` -> \`/交付至完成\`（或手动 \`/04-代码实现\` -> \`/05-代码审查\` -> \`/07-测试执行\`）-> \`/08-发布准备\` -> \`/09-发布执行\` -> \`/10-复盘总结\`。S 档压缩为：\`/定义完成\`（迷你合同）-> 实现 -> 验证。
-3. 商业化轨：用 \`/new-product <name>\` 初始化产品商业化容器 \`business/<name>/\`；首次可用 \`/B1-B8-商业化准备\` 一次性串联生成 \`/B1-业务定位\` -> \`/B2-商业模式\` -> \`/B3-PMF与客户画像\` -> \`/B4-场景与购买旅程\` -> \`/B5-渠道漏斗映射\` -> \`/B6-营销获客策略\` -> \`/B7-营销预算\` -> \`/B8-渠道执行策略\`；上线后按周期执行 \`/B9-策略复盘\`。
-4. 两轨衔接：\`/01\`、\`/02\` 读取商业化基线（定位、ICP、场景、商业模式），完成合同记录北极星挂钩；\`/08\`、\`/09\` 对照 B5/B8 准备发布营销材料和分发清单；\`/10\` 的增长信号回流 \`/B9\`，行为增量回写 \`specs/\`；B8 的营销工程需求（landing、SEO 页面、埋点）通过 \`/new-feature\` 进入研发轨。
-5. 每个阶段都必须读取所在容器（\`features/<name>/\` 或 \`business/<name>/\`）下的前序文档，并把本阶段产物写回同目录。
-6. 随时可执行 \`/workflow-status\` 汇总两轨全部需求和产品的阶段、合同与 Oracle 进度、阻塞和下一步。
+1. 读取 \`workflow/policy.yaml\`，确定采用“自动选择”还是“完整检查”。旧工作区没有该文件时按“完整检查”处理。
+2. 读取 \`workflow/team-profile.yaml\`，确认项目位置、现有资料和本地操作范围。
+3. 只读取与当前任务对应的 \`workflow/core/commands/<阶段>.md\` 及直接相关的代码和资料。不要为了一个小任务预读全部阶段或完整命令清单。
+4. 用户已经明确要求修复、修改或实现本地内容时，可以在其范围内直接开始；不要求用户先选择阶段编号，也不重复索要已经给出的确认。
 
-不同工具触发阶段的方式不同，见下方“工具使用方式”。
+## 选择处理方式
 
-## 工作流命令
+- “自动选择”是新安装的默认方式。范围清楚、可本地恢复且未触及高风险内容时，走“轻量处理”：确认影响范围，批量修改，检查完整改动，再做一次针对性验证，最后统一记录结果。最多进行两轮修复。
+- 涉及对外接口、数据结构、登录与权限、数据迁移、持续集成或发布配置、生产环境、跨项目修改、不可逆操作，或发现改动超出原范围时，立即改用“完整检查”。合并和正式发布前也采用完整检查。
+- 具体判定以 \`workflow/policy.yaml\` 为准。
 
-${makeCommandTable()}
+## 始终遵守
 
-## 任务描述模板
+- 只把真实执行过的检查（测试、构建、运行和截图）写成已通过；无法验证时直接说明原因和剩余风险。
+- 修改前检查未提交内容，保留用户已有改动；不得顺手扩大任务范围。
+- 本地分支、提交、标签和本地合并可在范围与现状检查后执行。
+- 远程推送、创建远程发布、部署、数据库写入、生产配置写入、公开发布、营销投放、对外联系以及破坏性或难恢复的操作，必须先得到用户明确授权。
+- 用户要求查看、解释或审查时默认只读；用户要求修改或开发时才实施本地变更。
 
-启动阶段时，尽量用三段描述任务，保证 agent 有足够上下文：
+## 默认表达
 
-- **目标**：完成后必须达成什么。
-- **约束**：哪些内容不能改，例如公开 API、数据库结构、鉴权链路、无关模块。
-- **验收**：如何证明正确，例如测试、脚本、API 调用、浏览器检查、截图。
+对用户优先说“这次改动、完成标准、验收项、检查结果、明确卡点、需要你确认”。不要默认展示内部状态码、规则编号或文件结构。汇报应先给结果，再给验证情况和仍未完成的事项。
 
-## 单一事实源
+## 按需查找
 
-- 工作流规则：\`workflow/core/\`
-- 阶段清单：\`workflow/core/command-manifest.yaml\`
-- 工作区配置（事实与路径）：\`workflow/team-profile.yaml\`
-- 工作区宪法（不可协商原则）：\`workflow/constitution.md\`
-- 个人规范层：\`workflow/standards/\`
-- 行为真相层（living specs）：工作区级 \`specs/\`
-- 可复用检查能力：\`workflow/core/capabilities/\`
-- 需求产物与完成合同：工作区级 \`features/<feature>/\`（合同为 \`00-完成合同.md\`）
-- 商业化产物：工作区级 \`business/<product>/\`
-- 工具 adapter：仅作为生成的薄入口
-
-## 硬闸门
-
-- 产品和工作流文档默认与代码仓库分开；如果个人项目需要公开 \`README\`、\`CHANGELOG\`、release notes、商店文案或隐私政策，可以在发布阶段明确记录为代码侧/公开侧材料。
-- 功能分支闸门和实现阶段闸门通过前，禁止修改业务代码。
-- \`/02B-UI设计\` 是前端实现的设计闸门；\`/04A-前端代码实现\` 必须读取并遵循工作区级 \`features/<feature>/02B-UI设计.md\`，缺失时先补齐 02B，除非用户明确给出范围有限的设计豁免。
-- \`/03-06-研发准备\` 以及 01/02/02B/03 阶段只授权分析和工作流文档。
-- 个人项目允许 agent 在目标仓库工作树干净、范围明确、测试计划明确时执行本地分支命名、创建、commit、tag 和本地 merge。
-- 远程 push、GitHub release、商店发布、部署、数据库写入、生产配置写入和公开发布动作必须有用户明确授权。
-- 同仓多需求进入实现阶段后，必须使用独立 worktree。
-- 商业化轨（\`/new-product\`、\`/B1\` 到 \`/B9\`）只产出文档和清单：对外发布内容、投放广告、发送 cold email、联系 influencer 或合作伙伴必须有用户明确授权或由用户自行执行；付费投放支出由用户手动执行。
-- 商业化结论必须做证据分级（一手/二手/推断）并注明来源和日期，不得编造市场数据、用户评价或竞品价格。
-- 营销工程需求（landing page、SEO 页面、埋点、A/B 测试）必须通过 \`/new-feature\` 进入研发轨并遵守其全部闸门，不在 B 阶段直接修改代码。
-- **完成合同闸门**：M/L 档需求进入实现（\`/04\` 或 \`/交付至完成\`）前，\`features/<feature>/00-完成合同.md\` 必须已冻结且 Definition Lint 通过；S 档必须有 ★ 必填节完整的迷你合同。冻结需用户明确确认。
-- **合同不可静默修改**：冻结后的标准、阈值、blocking 标记只能走修订记录并经用户再次确认；改测试换通过按高危问题处理。
-- **完成判定**：宣布完成 = blocking Oracle 全部 PASS（或用户书面确认 WAIVED）；Oracle 状态只能由 \`/交付至完成\` 或 \`/07-测试执行\` 翻转且必须附证据；PASS 后代码再变更置 STALE 必须复验。
-- \`workflow/constitution.md\` 在所有阶段不可协商；与需求冲突时先经用户确认修订宪法，不得绕过。
-
-## 工具能力策略
-
-workflow core 是共享的。工具 adapter 可按当前工具能力增强或降级：
-
-- L0：文档规则
-- L1：prompt 和命令模板
-- L2：工具原生规则或 slash commands
-- L3：hooks 或前置检查
-- L4：subagents 或多 agent 路由
-
-不要承诺所有工具体验完全一致。只能使用当前工具自己的 adapter。
-
-## 工具使用方式
-
-${makeToolUsage(profile)}
-
-## 已启用工具
-
-${profile.enabledTools.map((tool) => `- ${tool}`).join('\n')}
-
-## 参考文件
-
-- \`workflow/README.md\`：工作流总览。
-- \`workflow/core/commands/\`：各阶段契约。
-- \`workflow/core/capabilities/README.md\`：可复用检查能力及工具适配方式。
-- \`workflow/core/templates/completion-contract.md\`：完成合同模板（可用 \`openone-workflow-check-contract\` 校验结构）。
-- \`workflow/constitution.md\`：工作区宪法；\`workflow/standards/\`：个人规范层；\`specs/\`：living specs。
-- \`workflow/team-profile.yaml\`：当前工作区配置和资料扫描结果。
-
-## 开始
-
-先读取 \`workflow/team-profile.yaml\`，再按用户请求的阶段读取 \`workflow/core/commands/\`。
+- 当前设置：\`workflow/policy.yaml\`、\`workflow/team-profile.yaml\`
+- 不可违背的项目原则：\`workflow/constitution.md\`
+- 当前阶段说明：\`workflow/core/commands/\`
+- 已上线行为：\`specs/\`
+- 本次改动资料：\`features/<name>/\`
+- 商业规划资料：\`business/<name>/\`
+- 旧阶段编号与兼容名称：\`workflow/core/command-manifest.yaml\`
 `;
 }
 
 function makeThinCommand(toolName, id) {
-  return `# ${toolName} adapter for /${id}
+  const command = COMMANDS.find((item) => item.id === id);
+  return `# ${command ? command.user_title : id}
 
-这是薄 adapter。执行时必须按顺序读取：
+${command ? command.user_description : '按当前任务说明继续。'}
 
-1. \`AGENTS.md\`
-2. \`workflow/team-profile.yaml\`
-3. \`workflow/core/commands/${id}.md\`
+1. 读取 \`workflow/policy.yaml\` 和 \`workflow/team-profile.yaml\`。
+2. 读取 \`workflow/core/commands/${id}.md\`。
+3. 只补充与本次任务直接相关的代码和资料。
 
-不得加入与 workflow/core 冲突的工具特定行为。
+兼容阶段标识：\`/${id}\`。${toolName} 入口不改变用户给出的任务范围，也不扩大远程或生产写入授权。
 `;
 }
 
@@ -1150,35 +1034,38 @@ function makeStageSkill(command) {
   const priorContext = command.id === 'init-workspace'
     ? '目标工作区中的本地事实与资料路径'
     : command.id === 'workflow-status'
-      ? '\`features/\` 与 \`business/\` 下的状态和阶段文档'
+      ? '\`features/*/00-工作流状态.md\` 与 \`business/*/00-商业化状态.md\`；只有汇总所需字段缺失时，再定向读取一份直接相关记录，不读取本地代码'
       : isBusinessCommand(command.id)
         ? '\`business/<product>/\` 下的前序阶段文档'
-        : '\`features/<feature>/\` 下的前序阶段文档';
+        : command.implementation_gate
+          ? '与本次改动直接相关的代码和现有资料；仅在采用“完整检查”或 \`features/<feature>/\` 已存在时，读取其中相关的前序资料'
+          : '\`features/<feature>/\` 下与当前阶段相关的已有资料，以及本次任务直接相关的代码或资料';
   const authorizationNote = isBusinessCommand(command.id)
-    ? '商业化 Skill 只授权生成文档和清单；发布、投放、outreach 或付费动作仍需用户明确授权。'
-    : '用户显式选择本 Skill 只表示选择阶段；实现、远程 push、release、部署、数据库或生产配置写入仍按 core 的闸门和授权边界处理。';
+    ? '本入口只负责整理商业规划和清单；公开发布、投放、对外联系或付费动作仍需用户明确授权。'
+    : '选择本入口不会扩大用户原本要求的范围；远程推送、发布、部署、数据库或生产配置写入仍需用户明确授权。';
 
   return `---
 name: ${command.skill_slug}
-description: ${yamlQuote(`仅在用户显式选择 ${command.id}（${command.title}）阶段时使用。${command.description}`)}
+description: ${yamlQuote(`${command.user_title}：${command.user_description}`)}
 ---
 
 <!-- ${MANAGED_ADAPTER_MARKER} -->
 
-# /${command.id} ${command.title}
+# ${command.user_title}
 
-本 Skill 是由 \`workflow/core/command-manifest.yaml\` 生成的分阶段发现入口，不复制阶段规则。
+${command.user_description}
 
-- 阶段作用：${command.description}
+- 高级兼容信息：旧阶段标识为 \`/${command.id}\`，供旧说明和搜索使用
 - 参数提示：\`${command.argument_hint}\`
 
-执行时必须按顺序读取：
+开始时只读取：
 
-1. 根目录 \`AGENTS.md\`
+1. \`workflow/policy.yaml\`；文件缺失时采用“完整检查”
 2. \`workflow/team-profile.yaml\`
-3. \`workflow/core/command-manifest.yaml\`
-4. \`workflow/core/commands/${command.id}.md\`
-5. ${priorContext}
+3. \`workflow/core/commands/${command.id}.md\`
+4. ${priorContext}
+
+信息足够时直接继续；只有缺少会改变结果的关键内容时才询问用户。
 
 ${authorizationNote}
 `;
@@ -1187,9 +1074,9 @@ ${authorizationNote}
 function makeStageSkillMetadata(command) {
   return `# ${MANAGED_ADAPTER_MARKER}
 interface:
-  display_name: ${yamlQuote(`${command.id} ${command.title}`)}
-  short_description: ${yamlQuote(shortDescription(command.description))}
-  default_prompt: ${yamlQuote(`执行 /${command.id} 阶段，并严格读取 AGENTS.md、team profile 与对应 core command；若参数不足先说明缺失项。`)}
+  display_name: ${yamlQuote(command.user_title)}
+  short_description: ${yamlQuote(shortDescription(command.user_description))}
+  default_prompt: ${yamlQuote(`请${command.user_title}。${command.user_description} 按当前工作区设置选择合适的处理方式，读取本阶段说明和直接相关资料；信息足够时直接继续。`)}
 policy:
   allow_implicit_invocation: false
 `;
@@ -1198,29 +1085,42 @@ policy:
 function makeAgentWorkflowSkill() {
   return `---
 name: agent-workflow
-description: 按 openone-workflow-kit 的阶段契约推进个人开发者的研发与商业化双轨工作。适用于需求、完成合同、实现、测试、发布、复盘、定位、商业模式、PMF、渠道、预算与策略复盘等阶段请求。
+description: 根据用户的自然语言请求选择最短且安全的处理方式，完成本地修改、检查、发布准备或商业规划。低风险改动可直接轻量处理，不要求先选择阶段编号。
 ---
 
 <!-- ${MANAGED_ADAPTER_MARKER} -->
 
-# agent-workflow
+# 自动安排工作
 
-本 Skill 只负责把请求路由到正确阶段契约。自动加载或语义匹配本 Skill 不等于用户显式选择了某个阶段，也不授权代码实现、远程发布、营销投放或其他高风险动作。
+本 Skill 根据用户要达成的结果选择合适的处理方式。用户明确要求修复、修改或实现本地内容时，可按“自动选择”直接实施范围内的低风险改动，无需先选择阶段编号或再次确认本地实现。自动加载不会扩大用户请求的范围。
 
-执行任何工作流阶段时，按顺序读取：
+开始时按需读取：
 
-1. 根目录 \`AGENTS.md\`（快速开始、命令表、硬闸门）
-2. \`workflow/team-profile.yaml\`（事实、仓库、分支与授权策略）
-3. \`workflow/core/command-manifest.yaml\`（全部 ${COMMANDS.length} 个阶段及 Skill slug）
-4. \`workflow/core/commands/<用户选择的阶段>.md\`（阶段契约）
+1. \`workflow/policy.yaml\`；缺失时采用“完整检查”
+2. \`workflow/team-profile.yaml\`
+3. 与用户目标最相关的一个 \`workflow/core/commands/<阶段>.md\`
+4. 与本次任务直接相关的代码和资料
+
+用户给出旧阶段编号时直接读取同名说明；自然语言任务无需转换成用户可见的内部编号。
 
 规则：
 
-- 研发阶段产物写入工作区级 \`features/<feature>/\`；商业化阶段产物写入 \`business/<product>/\`。
-- 实现必须通过完成合同、功能分支、阶段和并行开发闸门。
-- 商业化阶段不授权公开发布、投放、outreach 或付费动作；营销工程需求必须回流研发轨。
-- 远程 push、release、部署、数据库写入和生产配置写入仍需要用户明确授权。
-- 优先使用本地证据；资料缺失时记录精确缺口。
+- 低风险本地改动走“轻量处理”；命中策略中的升级条件时立即改用“完整检查”。
+- 用户要求查看、解释或审查时保持只读；用户要求修改或开发时才实施本地变更。
+- 商业规划不授权公开发布、投放、对外联系或付费动作。
+- 远程推送、发布、部署、数据库写入和生产配置写入仍需要用户明确授权。
+- 只报告真实执行过的检查；资料缺失时说明明确卡点。
+`;
+}
+
+function makeAgentWorkflowSkillMetadata() {
+  return `# ${MANAGED_ADAPTER_MARKER}
+interface:
+  display_name: "自动安排工作"
+  short_description: "根据任务风险选择轻量处理或完整检查，并直接推进范围内的工作。"
+  default_prompt: "请根据我的目标自动选择合适的处理方式。信息足够时直接推进范围内的本地工作；需要远程或生产写入时先征得我的明确同意。"
+policy:
+  allow_implicit_invocation: true
 `;
 }
 
@@ -1238,69 +1138,33 @@ function yamlQuote(value) {
 
 function makeCursorRule() {
   return `---
-description: "个人开发者 agent 工作流：分阶段交付、审查、测试、发布和复盘。"
+description: "根据改动风险自动选择轻量处理或完整检查。"
 alwaysApply: true
 ---
 
-# Agent Workflow (Cursor)
+# 工作区协作方式
 
-本工作区使用工具无关的分阶段工作流。本规则会自动应用到每次请求。
-完整使用说明见 \`AGENTS.md\`。
+先读取 \`workflow/policy.yaml\` 和 \`workflow/team-profile.yaml\`，再读取与当前任务对应的一个 \`workflow/core/commands/<阶段>.md\`。
 
-## 在 Cursor 中执行阶段
+用户明确要求修复、修改或实现本地内容时，可直接在其范围内开始，不要求先选择阶段编号。低风险改动采用“轻量处理”；命中策略中的风险条件时改用“完整检查”。
 
-本 kit 会在 \`.cursor/commands/\` 生成 Cursor 自定义 slash commands（Cursor 1.6+）。
-在 Agent 输入框输入 \`/\`，选择阶段，再描述功能。例如：
+## 可选的兼容入口
 
-- \`/01-需求讨论\` 开始一个新需求
-- \`/04-代码实现\` 对指定需求进入实现阶段
+\`.cursor/commands/\` 提供旧阶段编号，适合明确指定高级流程；普通任务直接用自然语言描述目标、限制和检查方法即可。
 
-兜底方式：可以直接 @ 阶段契约，例如
-\`@workflow/core/commands/04-代码实现.md\`.
+## 安全范围
 
-agent 随后读取阶段契约、\`workflow/team-profile.yaml\` 和前序
-\`features/<feature>/\` 文档，并把阶段产物写入 \`features/<feature>/\`。
-
-## 阶段顺序
-
-研发轨（M/L 档）：
-new-feature（S/M/L 分级）-> 01-需求讨论 ->（澄清）-> 02-产品文档 -> 02B-UI设计 -> 03-技术架构 ->
-06-测试用例 -> 定义完成（冻结完成合同）-> 一致性检查 -> 交付至完成（或 04 -> 05 -> 07）->
-08-发布准备 -> 09-发布执行 -> 10-复盘总结；S 档：定义完成（迷你合同）-> 实现 -> 验证
-
-商业化轨：
-new-product -> B1-业务定位 -> B2-商业模式 -> B3-PMF与客户画像 -> B4-场景与购买旅程 ->
-B5-渠道漏斗映射 -> B6-营销获客策略 -> B7-营销预算 -> B8-渠道执行策略 -> B9-策略复盘（周期执行）
-
-查看全部需求和产品状态时，执行 \`workflow/core/commands/workflow-status.md\`。
-
-## 任务描述
-
-每个任务尽量写清目标、约束和验收方式。
-
-## 事实源
-
-- 工作流规则：\`workflow/core/\`
-- 工作区配置：\`workflow/team-profile.yaml\`
-- 可复用检查能力：\`workflow/core/capabilities/\`
-- 完整使用说明：\`AGENTS.md\`
-
-## 硬闸门
-
-- 功能分支闸门和实现阶段闸门通过前，禁止修改业务代码。
-- M/L 档需求进入实现前，完成合同必须已冻结且 Definition Lint 通过；宣布完成 = blocking Oracle 全 PASS。
-- 有 UI 或前端工作的需求必须先完成 \`/02B-UI设计\`，\`/04A-前端代码实现\` 必须遵循对应设计基线。
-- 本地分支命名、创建、commit、tag 和本地 merge 可由 agent 在个人项目中执行；远程 push、release、部署、数据库写入和生产配置写入需要用户明确授权。
-- 同仓并行实现进入实现阶段后必须使用独立 worktree。
-- 商业化轨（B1-B9）只产出文档；对外发布、投放和 outreach 需用户明确授权，营销工程需求通过 \`/new-feature\` 回流研发轨。
+- 只报告真实执行过的检查，保留用户已有改动，不扩大任务范围。
+- 远程推送、发布、部署、数据库写入、生产配置写入、公开发布、投放和对外联系必须得到用户明确授权。
+- 商业规划默认只整理资料和清单。
 `;
 }
 
 function makeGenericInstructions(toolName) {
   return `# ${toolName} 工作流说明
 
-先读取 AGENTS.md，再按用户请求的阶段读取 workflow/team-profile.yaml 和 workflow/core/commands。
+先读取 \`workflow/policy.yaml\` 和 \`workflow/team-profile.yaml\`，再按当前任务读取一个 \`workflow/core/commands/\` 下的说明。
 
-本文件是薄 adapter，不得覆盖 workflow/core 的硬闸门。
+用户明确要求本地修改时可在范围内直接开始。远程推送、发布、部署、数据库写入和生产配置写入仍需要用户明确授权。
 `;
 }

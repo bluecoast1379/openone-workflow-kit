@@ -8,6 +8,9 @@ const REQUIRED_FIELDS = [
   'argument_hint',
   'implementation_gate'
 ];
+const DISPLAY_FIELDS = ['user_title', 'user_description'];
+const ALLOWED_FIELDS = new Set([...REQUIRED_FIELDS, ...DISPLAY_FIELDS]);
+const SUPPORTED_SCHEMA_VERSIONS = new Set(['1.0', '1.1']);
 
 const EXPECTED_V1_COMMAND_IDS = [
   'init-workspace',
@@ -91,13 +94,25 @@ function parseCommandManifest(source, file = 'command-manifest.yaml') {
     }
     match = line.match(/^    ([a-z_]+):\s*(.+)$/);
     if (match && current) {
-      if (!REQUIRED_FIELDS.includes(match[1])) throw syntaxError(file, lineNumber, `未知 command 字段: ${match[1]}`);
+      if (!ALLOWED_FIELDS.has(match[1])) throw syntaxError(file, lineNumber, `未知 command 字段: ${match[1]}`);
       if (match[1] in current) throw syntaxError(file, lineNumber, `重复 command 字段: ${match[1]}`);
       current[match[1]] = parseScalar(match[2], file, lineNumber);
       return;
     }
     throw syntaxError(file, lineNumber, `无法解析: ${line.trim()}`);
   });
+
+  // Schema 1.0 did not distinguish internal command metadata from the text
+  // shown in picker UIs. Keep old manifests readable while giving consumers a
+  // single, explicit display API.
+  if (manifest.schemaVersion === '1.0') {
+    for (const command of manifest.commands) {
+      if (!('user_title' in command) && command.title) command.user_title = command.title;
+      if (!('user_description' in command) && command.description) {
+        command.user_description = command.description;
+      }
+    }
+  }
 
   return manifest;
 }
@@ -109,12 +124,14 @@ function assertUniqueField(seen, field, file, lineNumber) {
 
 function validateCommandManifest(manifest, file = 'command-manifest.yaml') {
   const errors = [];
-  if (manifest.schemaVersion !== '1.0') errors.push('schema_version 必须为 "1.0"');
+  if (!SUPPORTED_SCHEMA_VERSIONS.has(manifest.schemaVersion)) {
+    errors.push('schema_version 必须为 "1.0" 或 "1.1"');
+  }
   if (!Number.isInteger(manifest.commandCount) || manifest.commandCount < 1) {
     errors.push('command_count 必须为正整数');
   }
-  if (manifest.schemaVersion === '1.0' && manifest.commandCount !== EXPECTED_V1_COMMAND_IDS.length) {
-    errors.push(`schema 1.0 的 command_count 必须为 ${EXPECTED_V1_COMMAND_IDS.length}`);
+  if (SUPPORTED_SCHEMA_VERSIONS.has(manifest.schemaVersion) && manifest.commandCount !== EXPECTED_V1_COMMAND_IDS.length) {
+    errors.push(`schema ${manifest.schemaVersion} 的 command_count 必须为 ${EXPECTED_V1_COMMAND_IDS.length}`);
   }
   if (manifest.commandCount !== manifest.commands.length) {
     errors.push(`command_count=${manifest.commandCount}，实际 commands=${manifest.commands.length}`);
@@ -123,10 +140,16 @@ function validateCommandManifest(manifest, file = 'command-manifest.yaml') {
   const ids = new Set();
   const foldedIds = new Set();
   const slugs = new Set();
+  const userTitles = new Set();
   for (const [index, command] of manifest.commands.entries()) {
     const label = `commands[${index}]`;
     for (const field of REQUIRED_FIELDS) {
       if (!(field in command)) errors.push(`${label} 缺少 ${field}`);
+    }
+    if (manifest.schemaVersion === '1.1') {
+      for (const field of DISPLAY_FIELDS) {
+        if (!(field in command)) errors.push(`${label} 缺少 ${field}`);
+      }
     }
     if (!isPortableCommandId(command.id)) {
       errors.push(`${label}.id 不是安全文件名`);
@@ -150,17 +173,27 @@ function validateCommandManifest(manifest, file = 'command-manifest.yaml') {
     for (const field of ['title', 'description', 'argument_hint']) {
       if (typeof command[field] !== 'string' || !command[field].trim()) errors.push(`${label}.${field} 必须为非空字符串`);
     }
+    for (const field of DISPLAY_FIELDS) {
+      if (field in command && (typeof command[field] !== 'string' || !command[field].trim())) {
+        errors.push(`${label}.${field} 必须为非空字符串`);
+      }
+    }
+    if (manifest.schemaVersion === '1.1' && typeof command.user_title === 'string' && command.user_title.trim()) {
+      const normalizedTitle = command.user_title.trim();
+      if (userTitles.has(normalizedTitle)) errors.push(`重复 user_title: ${normalizedTitle}`);
+      else userTitles.add(normalizedTitle);
+    }
     if (typeof command.implementation_gate !== 'boolean') {
       errors.push(`${label}.implementation_gate 必须为 boolean`);
     }
   }
 
-  if (manifest.schemaVersion === '1.0') {
+  if (SUPPORTED_SCHEMA_VERSIONS.has(manifest.schemaVersion)) {
     const expected = new Set(EXPECTED_V1_COMMAND_IDS);
     const missing = EXPECTED_V1_COMMAND_IDS.filter((id) => !ids.has(id));
     const unexpected = [...ids].filter((id) => !expected.has(id));
     if (missing.length || unexpected.length) {
-      errors.push(`schema 1.0 command 集合不完整；缺少: ${missing.join(', ') || '无'}；多余: ${unexpected.join(', ') || '无'}`);
+      errors.push(`schema ${manifest.schemaVersion} command 集合不完整；缺少: ${missing.join(', ') || '无'}；多余: ${unexpected.join(', ') || '无'}`);
     }
   }
 

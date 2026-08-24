@@ -2,6 +2,23 @@
 
 All notable changes to OpenOne Workflow Kit are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+## [1.1.0] - 2026-08-24
+
+### Changed
+
+- Add managed `workflow/policy.yaml` profiles: new installations default to automatic selection, while upgraded workspaces without a policy retain full checks.
+- Let low-risk local changes use a bounded lightweight path with at most two repair cycles, diff review before final targeted verification, and one end-of-run record.
+- Shrink generated `AGENTS.md` and stage Skill read sets so a small task does not load the complete command catalog.
+- Separate stable internal command metadata from plain-language titles and descriptions shown by generated adapters.
+- Replace default protocol jargon with user-facing terms such as completion standard, acceptance item, check result, and explicit blocker; legacy IDs and contract formats remain compatible.
+
+### Added
+
+- Add `openone-workflow-resolve-policy` for deterministic policy validation and risk escalation.
+- Add policy, upgrade, adapter-display, context-size, and legacy-compatibility regression coverage.
+
 ## [1.0.0] - 2026-07-27
 
 ### Changed
@@ -40,3 +57,5 @@ All notable changes to OpenOne Workflow Kit are documented here. The project fol
 
 [0.1.0]: https://github.com/bluecoast1379/openone-workflow-kit/releases/tag/v0.1.0
 [1.0.0]: https://github.com/bluecoast1379/openone-workflow-kit/releases/tag/v1.0.0
+[1.1.0]: https://github.com/bluecoast1379/openone-workflow-kit/compare/v1.0.0...v1.1.0
+[Unreleased]: https://github.com/bluecoast1379/openone-workflow-kit/compare/v1.1.0...HEAD

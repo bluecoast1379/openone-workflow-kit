@@ -14,7 +14,7 @@
 - 发布候选分支名
 - `02-产品文档.md` 和 `04-代码实现.md` 中登记的发布范围
 - 用户手动刷新后的本地 Git 引用或明确标记的本地缓存引用
-- `workflow/team-profile.yaml#risk_policy.high_risk_files`
+- `workflow/policy.yaml` 与策略解析器对发布候选改动返回的升级条件
 
 ## 输出
 
@@ -30,8 +30,9 @@ checks:
   - name: file_diff_count
     status: pass | warn | block
     detail: "<N> files changed"
-  - name: high_risk_files_touched
+  - name: policy_risks_detected
     status: pass | block
+    signals: ["..."]
     files: ["..."]
 overall_risk: P0 | P1 | P2 | P3
 blocked_reason: "..."

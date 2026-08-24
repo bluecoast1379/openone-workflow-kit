@@ -13,28 +13,28 @@
       "width": 1440,
       "height": 720,
       "purpose": "README hero",
-      "sha256": "e1b0683be279dec52fd3832bb8b6f7847c090e9140f6ee82e52d4ad7027cce0f"
+      "sha256": "a0a4c3532ca3dafd8708306a0d439a5daa1704d750a9122df33666fb8d58788c"
     },
     {
       "file": "architecture.svg",
       "width": 1440,
       "height": 900,
       "purpose": "Dual-track architecture",
-      "sha256": "c2c614ca0002dc91c586d377484af04610f7641e0ded7d6b04c7c9ba8ff447c9"
+      "sha256": "cde51f23afbb44696cf4e69de0cbac727bde57be4af208d367234ac75acb6c07"
     },
     {
       "file": "quick-demo.svg",
       "width": 1440,
       "height": 720,
       "purpose": "Three-step quick demo",
-      "sha256": "57d3b06b635d3e97e1e3b46f4717d5bfbe8b85c6166d2e28ca0cdbe20061af4a"
+      "sha256": "095ba2a45c1584116ca73a04df3e8ab7259fc72f87e442dab01da1b82dd40ee4"
     },
     {
       "file": "social-preview.svg",
       "width": 1280,
       "height": 640,
       "purpose": "Source for the GitHub social preview export",
-      "sha256": "f91461e2824024e1619a4c06e826ff06dc21b8f73439e195ffc4865f75f1d677"
+      "sha256": "db5cb7b55a3621eea47f6edd8ff335e3978270efc43d73acf21a744c176db697"
     }
   ],
   "exports": [
@@ -46,7 +46,8 @@
       "source": "social-preview.svg",
       "purpose": "GitHub repository social preview upload",
       "tracked": false,
-      "sha256": "0d484fa2fa1acd2f1e30e19ae3af58f889da799700325bb40ecd050edbed299d"
+      "renderer": "sharp 0.35.3 / libvips 8.18.3",
+      "sha256": "52cf3539570eafa64da8bca1c2aa8eba34f65128397e1800607408585735a342"
     }
   ]
 }

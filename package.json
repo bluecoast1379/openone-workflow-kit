@@ -1,6 +1,6 @@
 {
   "name": "openone-workflow-kit",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": false,
   "description": "面向独立开发者的工具无关 Agent 研发与商业化双轨工作流 kit，支持可验证交付、多工具适配、发布与增长复盘。",
   "keywords": [
@@ -51,10 +51,11 @@
     "agent-workflow-init": "bin/init-workspace.cjs",
     "openone-workflow-init": "bin/init-workspace.cjs",
     "agent-workflow-check-sanitized": "bin/check-sanitized.cjs",
-    "openone-workflow-check-contract": "bin/check-contract.cjs"
+    "openone-workflow-check-contract": "bin/check-contract.cjs",
+    "openone-workflow-resolve-policy": "bin/resolve-policy.cjs"
   },
   "scripts": {
-    "check": "node --check bin/init-workspace.cjs && node --check bin/command-manifest.cjs && node --check bin/check-command-manifest.cjs && node --check bin/check-sanitized.cjs && node --check bin/check-contract.cjs && node --check test/smoke.cjs && node --check test/codex-adapter-conformance.cjs && node --check test/release-readiness.cjs && node --check scripts/release-source-state.cjs && node --check scripts/build-release.cjs && node bin/check-command-manifest.cjs && node bin/check-sanitized.cjs && node test/smoke.cjs && node test/codex-adapter-conformance.cjs && node test/release-readiness.cjs",
+    "check": "node --check bin/init-workspace.cjs && node --check bin/command-manifest.cjs && node --check bin/check-command-manifest.cjs && node --check bin/check-sanitized.cjs && node --check bin/check-contract.cjs && node --check bin/resolve-policy.cjs && node --check test/adaptive-policy.cjs && node --check test/smoke.cjs && node --check test/codex-adapter-conformance.cjs && node --check test/release-readiness.cjs && node --check scripts/release-source-state.cjs && node --check scripts/build-release.cjs && node bin/check-command-manifest.cjs && node bin/check-sanitized.cjs && node test/adaptive-policy.cjs && node test/smoke.cjs && node test/codex-adapter-conformance.cjs && node test/release-readiness.cjs",
     "build:release": "node scripts/build-release.cjs",
     "init:dry-run": "node bin/init-workspace.cjs --target . --dry-run"
   },

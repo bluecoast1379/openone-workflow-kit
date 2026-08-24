@@ -1,6 +1,6 @@
 schema_version: "1.0"
 generated_at: "2026-06-05T00:00:00.000Z"
-generated_by: "openone-workflow-kit 1.0.0"
+generated_by: "openone-workflow-kit 1.1.0 example"
 
 team:
   name: "Example Team"
@@ -67,3 +67,23 @@ branch_model:
   integration_branch: "develop"
   feature_branch_rule: "feature/{ticket}-{slug}"
   worktree_dir: "_worktrees"
+
+risk_policy:
+  local_git_operations: "agent-allowed-after-scope-check"
+  remote_git_operations: "explicit-user-authorization-required"
+  push_and_release: "explicit-user-authorization-required"
+  database_writes: "explicit-user-authorization-required"
+  production_config_writes: "explicit-user-authorization-required"
+  high_risk_detection: "use workflow/policy.yaml and workflow/core/tools/resolve-policy.cjs"
+
+workflow:
+  policy: "workflow/policy.yaml"
+  features_dir: "features"
+  business_dir: "business"
+  specs_dir: "specs"
+  standards_dir: "workflow/standards"
+  constitution: "workflow/constitution.md"
+  core_dir: "workflow/core"
+  adapters_dir: "workflow/adapters"
+  user_facing_profiles: "自动选择 / 完整检查；低风险时为轻量处理"
+  completion_language: "完成标准 / 验收项 / 检查结果 / 明确卡点"
