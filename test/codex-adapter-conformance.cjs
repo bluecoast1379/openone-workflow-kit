@@ -177,7 +177,7 @@ expectManifestFailure(
   'implementation_gate'
 );
 expectManifestFailure(
-  manifestSource.replace(/\n    user_title: "开始一个改动"/, ''),
+  manifestSource.replace(/\r?\n    user_title: "开始一个改动"/, ''),
   '缺少 user_title'
 );
 expectManifestFailure(
