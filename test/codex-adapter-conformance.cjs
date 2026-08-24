@@ -191,7 +191,7 @@ expectManifestFailure(
 
 const oldManifestSource = manifestSource
   .replace('schema_version: "1.1"', 'schema_version: "1.0"')
-  .replace(/^    user_(?:title|description):.*\n/gm, '');
+  .replace(/^    user_(?:title|description):.*\r?\n/gm, '');
 const oldManifest = parseCommandManifest(oldManifestSource, 'legacy-v1.yaml');
 validateCommandManifest(oldManifest, 'legacy-v1.yaml');
 if (oldManifest.commands.some((command) =>
